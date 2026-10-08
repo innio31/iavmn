@@ -45,7 +45,7 @@ Allow: /sitemap.xml
 
 # ─── Main sitemap ───
 # Replace with your live domain after deployment
-Sitemap: http://localhost:3000/sitemap.xml
+Sitemap: https://iavmn.org.ng/sitemap.xml
 
 # ─── Crawl-delay (be polite to shared hosting) ───
 Crawl-delay: 1
