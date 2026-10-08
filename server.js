@@ -28,6 +28,11 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 
+// ─── Trust proxy (HostAfrica runs nginx in front of Node) ────
+// Without this, Express thinks requests are HTTP even when the
+// user is on HTTPS, and Secure session cookies never get set.
+app.set('trust proxy', 1);
+
 // ─── View engine ────────────────────────────────────────
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'src', 'views'));
@@ -82,6 +87,7 @@ app.use(
     secret: process.env.SESSION_SECRET || 'dev-only-insecure-secret',
     resave: false,
     saveUninitialized: false,
+    proxy: true,
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
