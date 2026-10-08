@@ -221,7 +221,7 @@ import {
 } from './controllers/certificateController.js';
 
 import { showVerifyPage } from './controllers/verifyController.js';
-import { streamEvents } from './controllers/eventsController.js';
+import { pollEvents } from './controllers/eventsController.js';
 import { showSearchPage, suggestSearch } from './controllers/searchController.js';
 
 import { showHome } from './controllers/homeController.js';
@@ -260,7 +260,6 @@ router.get('/healthz', (req, res) => {
 router.get('/', showHome);
 
 // ─── Public: search ─────────────────────────────────────
-// NOTE: /search/suggest must come before /search so it isn't treated as a query
 router.get('/search/suggest', suggestSearch);
 router.get('/search', showSearchPage);
 
@@ -356,8 +355,8 @@ router.post('/forgot-password', requireGuest, forgotValidators, postForgotPasswo
 router.get('/reset-password/:token', showResetPassword);
 router.post('/reset-password/:token', resetValidators, postResetPassword);
 
-// ─── Admin: real-time events (SSE) ──────────────────────
-router.get('/admin/events', requireLogin, streamEvents);
+// ─── Admin: real-time events (polling) ──────────────────
+router.get('/admin/events/poll', requireLogin, pollEvents);
 
 // ─── Admin: dashboard ───────────────────────────────────
 router.get('/admin', requireLogin, showDashboard);

@@ -1,5 +1,16 @@
 // public/js/admin-events.js
-// Real-time admin notifications via Server-Sent Events (SSE).
+// Polling-based admin notifications.
+//
+// Replaces the SSE implementation because HostAfrica's LiteSpeed proxy
+// buffers SSE responses and prevents streaming.
+//
+// Every POLL_INTERVAL seconds we call /admin/events/poll and:
+//   1. Show toasts for any item newer than the last batch we saw
+//   2. Increment sidebar badge counts for new items
+//
+// First poll uses a "quiet" mode — it records the current state as the
+// baseline and does NOT fire toasts for the initial batch. This prevents
+// a burst of stale notifications when you first open the admin.
 
 (function () {
   'use strict';
@@ -9,86 +20,57 @@
   }
 
   // ─── Configuration ──────────────────────────────────────
-  var ENDPOINT = '/admin/events';
+  var ENDPOINT = '/admin/events/poll';
+  var POLL_INTERVAL = 15000; // 15 seconds
   var TOAST_DURATION = 8000;
   var TOAST_MAX_STACK = 4;
   var DEBUG = false;
 
-  var HANDLERS = {
-    'message:new': {
+  // ─── State ──────────────────────────────────────────────
+  var lastPollAt = new Date(Date.now() - 60 * 1000).toISOString(); // start 1 min ago
+  var seenMessageIds = new Set();
+  var seenApplicationIds = new Set();
+  var seenPaymentIds = new Set();
+  var hasDoneFirstPoll = false;
+  var pollTimer = null;
+  var isPolling = false;
+  var consecutiveFailures = 0;
+
+  // ─── Event handlers by category ─────────────────────────
+  function handleMessage(m) {
+    showToast({
       icon: '✉',
       color: '#25573f',
       title: 'New Contact Message',
-      message: function (d) {
-        var name = d.name || 'someone';
-        var subject = d.subject ? ' — ' + d.subject : '';
-        return name + subject;
-      },
-      href: function (d) { return '/admin/messages/' + d.id; },
-      badge: 'messages',
-    },
-    'subscriber:new': {
-      icon: '@',
-      color: '#b9a446',
-      title: function (d) { return d.reactivated ? 'Subscriber Returned' : 'New Subscriber'; },
-      message: function (d) {
-        return d.email + (d.reactivated ? ' (resubscribed)' : '');
-      },
-      href: function () { return '/admin/subscribers'; },
-      badge: 'subscribers',
-    },
-    'application:new': {
+      message: m.name + (m.subject ? ' — ' + m.subject : ''),
+      href: '/admin/messages/' + m.id,
+    });
+    incrementBadge('messages');
+  }
+
+  function handleApplication(a) {
+    showToast({
       icon: '✔',
       color: '#25573f',
       title: 'New Membership Application',
-      message: function (d) {
-        return d.full_name + ' applied for ' + (d.tier_name || 'a tier');
-      },
-      href: function (d) { return '/admin/applications/' + d.id; },
-      badge: 'applications',
-    },
-    'application:payment': {
+      message: a.full_name + ' applied for ' + (a.tier_name || 'a tier'),
+      href: '/admin/applications/' + a.id,
+    });
+    incrementBadge('applications');
+  }
+
+  function handlePayment(p) {
+    var amount = p.amount
+      ? ' ' + (p.currency || 'NGN') + ' ' + Number(p.amount).toLocaleString()
+      : '';
+    showToast({
       icon: '₦',
       color: '#155724',
       title: 'Payment Received',
-      message: function (d) {
-        var amount = d.amount ? ' ' + (d.currency || 'NGN') + ' ' + Number(d.amount).toLocaleString() : '';
-        return d.full_name + ' —' + amount;
-      },
-      href: function (d) { return '/admin/applications/' + d.id; },
-      badge: null,
-    },
-    'application:status': {
-      icon: '◈',
-      color: '#6c757d',
-      title: 'Application Updated',
-      message: function (d) {
-        return d.full_name + ': ' + d.from_status + ' → ' + d.to_status;
-      },
-      href: function (d) { return '/admin/applications/' + d.id; },
-      badge: null,
-    },
-    'member:new': {
-      icon: '☰',
-      color: '#25573f',
-      title: 'New Member',
-      message: function (d) {
-        return d.full_name + ' (' + d.member_number + ')';
-      },
-      href: function (d) { return '/admin/members/' + d.id; },
-      badge: 'members',
-    },
-    'member:updated': {
-      icon: '◈',
-      color: '#6c757d',
-      title: 'Member Updated',
-      message: function (d) {
-        return d.full_name + ': ' + d.from_status + ' → ' + d.to_status;
-      },
-      href: function (d) { return '/admin/members/' + d.id; },
-      badge: null,
-    },
-  };
+      message: p.full_name + ' —' + amount,
+      href: '/admin/applications/' + p.id,
+    });
+  }
 
   // ─── Toast container ────────────────────────────────────
   function ensureToastContainer() {
@@ -116,18 +98,17 @@
     toast.className = 'admin-toast';
     toast.style.setProperty('--toast-accent', opts.color || '#25573f');
 
-    var titleText = typeof opts.title === 'function' ? opts.title(opts.data) : opts.title;
-
     toast.innerHTML =
       '<div class="admin-toast-icon">' + (opts.icon || '•') + '</div>' +
       '<div class="admin-toast-body">' +
-        '<div class="admin-toast-title">' + escapeHtml(titleText) + '</div>' +
+        '<div class="admin-toast-title">' + escapeHtml(opts.title) + '</div>' +
         '<div class="admin-toast-message">' + escapeHtml(opts.message) + '</div>' +
         (opts.href ? '<a class="admin-toast-link" href="' + escapeAttr(opts.href) + '">View →</a>' : '') +
       '</div>' +
       '<button type="button" class="admin-toast-close" aria-label="Dismiss">×</button>';
 
-    toast.querySelector('.admin-toast-close').addEventListener('click', function () {
+    toast.querySelector('.admin-toast-close').addEventListener('click', function (ev) {
+      ev.stopPropagation();
       removeToast(toast);
     });
 
@@ -233,99 +214,118 @@
       else label.textContent = 'Offline';
     }
     pill.title =
-      state === 'live' ? 'Real-time notifications connected' :
-      state === 'connecting' ? 'Connecting to notification stream…' :
-      'Notification stream disconnected — will retry automatically';
+      state === 'live' ? 'Real-time notifications active (checking every 15s)' :
+      state === 'connecting' ? 'Connecting to notification service…' :
+      'Notification service offline — will retry automatically';
   }
 
-  // ─── SSE connection ─────────────────────────────────────
-  var source = null;
-  var reconnectAttempts = 0;
+  // ─── Poll loop ──────────────────────────────────────────
+  function poll() {
+    if (isPolling) return;
+    isPolling = true;
 
-  function connect() {
-    setStatus('connecting');
+    var url = ENDPOINT + '?since=' + encodeURIComponent(lastPollAt);
 
-    try {
-      source = new EventSource(ENDPOINT);
-    } catch (err) {
-      console.warn('[admin-events] failed to create EventSource:', err);
-      setStatus('offline');
-      scheduleReconnect();
-      return;
-    }
+    fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin',
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (payload) {
+        isPolling = false;
+        consecutiveFailures = 0;
 
-    source.addEventListener('open', function () {
-      // The connection is established (headers received).
-      // We mark "live" once we get the ready event below.
-      if (DEBUG) console.log('[admin-events] connection opened');
-    });
+        // Mark live on first successful poll
+        if (!hasDoneFirstPoll) {
+          setStatus('live');
+          if (DEBUG) console.log('[admin-events] first poll OK');
+        }
 
-    source.addEventListener('ready', function (ev) {
-      reconnectAttempts = 0;
-      setStatus('live');
-      if (DEBUG) console.log('[admin-events] ready:', ev.data);
-    });
+        processEvents(payload);
 
-    function bind(eventName) {
-      source.addEventListener(eventName, function (ev) {
-        try {
-          var data = JSON.parse(ev.data || '{}');
-          if (DEBUG) console.log('[admin-events]', eventName, data);
-          var handler = HANDLERS[eventName];
-          if (!handler) return;
+        // Move the since cursor forward
+        if (payload.now) {
+          lastPollAt = payload.now;
+        } else {
+          lastPollAt = new Date().toISOString();
+        }
 
-          showToast({
-            icon: handler.icon,
-            color: handler.color,
-            title: handler.title,
-            message: handler.message(data),
-            href: handler.href ? handler.href(data) : null,
-            data: data,
-          });
+        hasDoneFirstPoll = true;
+      })
+      .catch(function (err) {
+        isPolling = false;
+        consecutiveFailures += 1;
+        if (DEBUG) console.warn('[admin-events] poll failed:', err.message);
 
-          if (handler.badge) incrementBadge(handler.badge);
-        } catch (err) {
-          console.warn('[admin-events] failed to handle', eventName, err);
+        // Mark offline after 2 consecutive failures
+        if (consecutiveFailures >= 2) {
+          setStatus('offline');
         }
       });
-    }
+  }
 
-    Object.keys(HANDLERS).forEach(bind);
+  function processEvents(payload) {
+    var ev = payload.events || {};
+    var messages = ev.messages || [];
+    var applications = ev.applications || [];
+    var payments = ev.payments || [];
 
-    source.addEventListener('error', function () {
-      if (source.readyState === EventSource.CLOSED) {
-        setStatus('offline');
-        scheduleReconnect();
-      } else {
-        setStatus('connecting');
-      }
+    // ——— Messages ———
+    messages.forEach(function (m) {
+      if (seenMessageIds.has(m.id)) return;
+      seenMessageIds.add(m.id);
+      if (hasDoneFirstPoll) handleMessage(m);
+    });
+
+    // ——— Applications ———
+    applications.forEach(function (a) {
+      if (seenApplicationIds.has(a.id)) return;
+      seenApplicationIds.add(a.id);
+      if (hasDoneFirstPoll) handleApplication(a);
+    });
+
+    // ——— Payments ———
+    payments.forEach(function (p) {
+      if (seenPaymentIds.has(p.id)) return;
+      seenPaymentIds.add(p.id);
+      if (hasDoneFirstPoll) handlePayment(p);
     });
   }
 
-  function scheduleReconnect() {
-    reconnectAttempts += 1;
-    var delay = Math.min(30000, 1000 * Math.pow(2, Math.min(reconnectAttempts, 5)));
-    if (DEBUG) console.log('[admin-events] reconnecting in', delay, 'ms');
-    setTimeout(connect, delay);
-  }
+  // ─── Boot ───────────────────────────────────────────────
+  ensureStatusPill();
+  setStatus('connecting');
 
+  // Small delay before first poll so the page can finish rendering
+  setTimeout(function () {
+    poll();
+    pollTimer = setInterval(poll, POLL_INTERVAL);
+  }, 800);
+
+  // Poll immediately when the tab becomes visible again
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'visible' && source && source.readyState === EventSource.CLOSED) {
-      connect();
+    if (document.visibilityState === 'visible') {
+      poll();
     }
   });
 
-  // ─── Boot ───────────────────────────────────────────────
-  if (window.EventSource) {
-    setTimeout(connect, 500);
-  } else {
-    console.warn('[admin-events] EventSource not supported');
-    setStatus('offline');
-  }
-
+  // Manual controls for the browser console
   window.adminEvents = {
-    reconnect: connect,
-    close: function () { if (source) source.close(); setStatus('offline'); },
+    pollNow: poll,
     debug: function (on) { DEBUG = !!on; console.log('[admin-events] debug =', DEBUG); },
+    status: function () {
+      return {
+        lastPollAt: lastPollAt,
+        seenMessages: seenMessageIds.size,
+        seenApplications: seenApplicationIds.size,
+        seenPayments: seenPaymentIds.size,
+        hasDoneFirstPoll: hasDoneFirstPoll,
+        consecutiveFailures: consecutiveFailures,
+      };
+    },
   };
 })();

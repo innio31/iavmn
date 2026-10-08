@@ -1,68 +1,141 @@
 // src/controllers/eventsController.js
-// Server-Sent Events (SSE) endpoint for the admin dashboard.
-// Only authenticated admin users can connect.
+// Polling endpoint for admin notifications.
+// Replaces the earlier SSE approach because HostAfrica's LiteSpeed proxy
+// buffers SSE responses and prevents real-time streaming.
 
-import { registerClient, getClientCount } from '../services/eventBus.js';
-
-// Heartbeat every 10s — fast enough to defeat nginx/LiteSpeed proxy buffering,
-// slow enough to avoid wasted traffic.
-const HEARTBEAT_INTERVAL_MS = 10 * 1000;
+import { query } from '../db.js';
 
 /**
- * GET /admin/events
- * Long-lived SSE stream.
+ * GET /admin/events/poll
+ * Returns the most recent events since a given timestamp.
+ *
+ * Query params:
+ *   since  — ISO timestamp (optional). If provided, only returns items created after this time.
+ *   limit  — max items per category (default 20, cap 50)
  */
-export const streamEvents = (req, res) => {
-  // ─── SSE headers ───
-  res.set({
-    'Content-Type': 'text/event-stream; charset=utf-8',
-    'Cache-Control': 'no-cache, no-transform',
-    'Connection': 'keep-alive',
-    // Disable buffering on nginx
-    'X-Accel-Buffering': 'no',
-    // Disable buffering on LiteSpeed (HostAfrica often runs this)
-    'X-LiteSpeed-Cache-Control': 'no-cache',
-  });
-  res.flushHeaders && res.flushHeaders();
+export const pollEvents = async (req, res) => {
+  try {
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const sinceRaw = typeof req.query.since === 'string' ? req.query.since.trim() : '';
+    const since = sinceRaw ? new Date(sinceRaw) : null;
 
-  // ─── Padding to force proxies to commit to streaming ───
-  // Some proxies wait for a minimum amount of data before flushing.
-  // Sending 2 KB of comment immediately forces the connection open.
-  res.write(':' + ' '.repeat(2048) + '\n\n');
+    // If the client sends an invalid date, fall back to "last 5 minutes"
+    const sinceValid = since && !Number.isNaN(since.getTime());
+    const cutoffDate = sinceValid ? since : new Date(Date.now() - 5 * 60 * 1000);
+    const cutoff = toMysqlDateTime(cutoffDate);
 
-  // ─── Initial ready event ───
-  const initialPayload = JSON.stringify({
-    ok: true,
-    clients: getClientCount() + 1,
-    time: new Date().toISOString(),
-  });
-  res.write(`event: ready\ndata: ${initialPayload}\n\n`);
+    const [messages, applications, payments] = await Promise.all([
+      fetchRecentMessages(cutoff, limit),
+      fetchRecentApplications(cutoff, limit),
+      fetchRecentPayments(cutoff, limit),
+    ]);
 
-  // ─── Register this client with the event bus ───
-  const sendFn = (event, data) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  };
-  const unsubscribe = registerClient(sendFn);
+    res.json({
+      ok: true,
+      since: cutoffDate.toISOString(),
+      now: new Date().toISOString(),
+      events: {
+        messages,
+        applications,
+        payments,
+      },
+    });
+  } catch (err) {
+    console.error('[events poll] failed:', err.message);
+    res.status(500).json({ ok: false, error: 'Poll failed' });
+  }
+};
 
-  // ─── Heartbeat loop ───
-  // Comment lines (starting with ":") are valid SSE and are ignored by
-  // the browser but keep the connection alive through proxies.
-  const heartbeat = setInterval(() => {
-    try {
-      res.write(`: heartbeat ${Date.now()}\n\n`);
-    } catch (err) {
-      // Client disconnected — cleanup will run below
-    }
-  }, HEARTBEAT_INTERVAL_MS);
+// ─── Helpers ────────────────────────────────────────────
 
-  // ─── Cleanup on disconnect ───
-  const cleanup = () => {
-    clearInterval(heartbeat);
-    try { unsubscribe(); } catch (e) { /* ignore */ }
-    try { res.end(); } catch (e) { /* ignore */ }
-  };
+/**
+ * Convert a JS Date to MySQL DATETIME string (UTC).
+ */
+const toMysqlDateTime = (date) => {
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    date.getUTCFullYear() +
+    '-' + pad(date.getUTCMonth() + 1) +
+    '-' + pad(date.getUTCDate()) +
+    ' ' + pad(date.getUTCHours()) +
+    ':' + pad(date.getUTCMinutes()) +
+    ':' + pad(date.getUTCSeconds())
+  );
+};
 
-  req.on('close', cleanup);
-  req.on('aborted', cleanup);
-  req.on('error', cleanup);
+/**
+ * Recent unread contact messages.
+ */
+const fetchRecentMessages = async (cutoff, limit) => {
+  const rows = await query(
+    `SELECT id, name, email, subject, LEFT(message, 120) AS preview, created_at
+     FROM contact_messages
+     WHERE created_at > ?
+     ORDER BY created_at DESC
+     LIMIT ?`,
+    [cutoff, limit]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    subject: r.subject,
+    preview: r.preview,
+    created_at: r.created_at,
+  }));
+};
+
+/**
+ * Recent membership applications (any status).
+ */
+const fetchRecentApplications = async (cutoff, limit) => {
+  const rows = await query(
+    `SELECT a.id, a.reference, a.full_name, a.email, a.status, a.payment_status, a.created_at,
+            t.name AS tier_name
+     FROM membership_applications a
+     LEFT JOIN membership_tiers t ON t.id = a.tier_id
+     WHERE a.created_at > ?
+     ORDER BY a.created_at DESC
+     LIMIT ?`,
+    [cutoff, limit]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    reference: r.reference,
+    full_name: r.full_name,
+    email: r.email,
+    status: r.status,
+    payment_status: r.payment_status,
+    tier_name: r.tier_name,
+    created_at: r.created_at,
+  }));
+};
+
+/**
+ * Recent payments (marked paid in the last window).
+ */
+const fetchRecentPayments = async (cutoff, limit) => {
+  const rows = await query(
+    `SELECT a.id, a.reference, a.full_name, a.payment_amount, a.payment_currency,
+            a.payment_paid_at, a.payment_reference,
+            t.name AS tier_name
+     FROM membership_applications a
+     LEFT JOIN membership_tiers t ON t.id = a.tier_id
+     WHERE a.payment_status = 'paid'
+       AND a.payment_paid_at IS NOT NULL
+       AND a.payment_paid_at > ?
+     ORDER BY a.payment_paid_at DESC
+     LIMIT ?`,
+    [cutoff, limit]
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    reference: r.reference,
+    full_name: r.full_name,
+    amount: r.payment_amount,
+    currency: r.payment_currency,
+    paid_at: r.payment_paid_at,
+    payment_reference: r.payment_reference,
+    tier_name: r.tier_name,
+  }));
 };
