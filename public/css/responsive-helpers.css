@@ -1,0 +1,31 @@
+/* public/css/responsive-helpers.css
+   Small responsive utility classes used across admin and public views.
+   Loaded AFTER admin.css and theme.css so its rules always apply.
+*/
+
+/* ─── Hide / Show on mobile ─────────────────────────── */
+
+/* Hide on screens ≤ 640px wide (mobile) */
+@media (max-width: 640px) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Hide on screens > 640px wide (tablet, desktop) */
+@media (min-width: 641px) {
+  .show-mobile {
+    display: none !important;
+  }
+}
+
+/* Legacy-safe fallback: if the browser doesn't support media queries,
+   hide the mobile variant by default */
+.show-mobile {
+  display: none;
+}
+@media (max-width: 640px) {
+  .show-mobile {
+    display: block !important;
+  }
+}
