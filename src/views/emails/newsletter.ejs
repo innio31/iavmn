@@ -1,7 +1,7 @@
 <%
   var siteName = (settings && settings.site_name) || appName || 'IAVMN';
   var siteShort = (settings && settings.site_short_name) || 'IAVMN';
-  var appUrl = (settings && settings.app_url) || 'http://localhost:3000';
+  var appUrl = appUrl || (settings && settings.app_url) || 'https://iavmn.org.ng';
   var contactEmail = (settings && settings.contact_email) || 'info@iavmn.org';
   var contactAddress = (settings && settings.contact_address) || null;
 

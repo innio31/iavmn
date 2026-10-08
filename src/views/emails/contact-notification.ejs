@@ -2,7 +2,7 @@
   // Variables passed in: { message, appName, settings }
   var siteName = (settings && settings.site_name) || appName || 'IAVMN';
   var siteShort = (settings && settings.site_short_name) || 'IAVMN';
-  var appUrl = (settings && settings.app_url) || process.env.APP_URL || 'http://localhost:3000';
+  var appUrl = appUrl || (settings && settings.app_url) || 'https://iavmn.org.ng';
   var receivedAt = message.created_at
     ? new Date(message.created_at).toLocaleString('en-GB', {
         day: '2-digit', month: 'long', year: 'numeric',

@@ -1,10 +1,5 @@
 // src/services/mailer.js
 // Centralized email service built on Nodemailer.
-//
-// Behavior:
-//   - If MAIL_HOST, MAIL_USER, MAIL_PASS are all non-empty, sends real email.
-//   - Otherwise logs the email to the console (dev mode) and returns ok+skipped.
-//   - Never throws.
 
 import 'dotenv/config';
 import nodemailer from 'nodemailer';
@@ -37,7 +32,6 @@ const getTransporter = () => {
 
   const port = Number(process.env.MAIL_PORT) || 465;
   const secure = String(process.env.MAIL_SECURE).toLowerCase() === 'true';
-
   const host = process.env.MAIL_HOST;
 
   transporter = nodemailer.createTransport({
@@ -49,9 +43,6 @@ const getTransporter = () => {
       pass: process.env.MAIL_PASS,
     },
     tls: {
-      // Some shared hosts (including HostAfrica) use certs that Node's
-      // default CA bundle doesn't trust — or in this case, an expired cert.
-      // We accept the risk for now; hostname verification is still performed.
       rejectUnauthorized: false,
       servername: host,
     },
@@ -68,18 +59,27 @@ const getTransporter = () => {
 
 // ─── Template rendering ─────────────────────────────────
 
+/**
+ * Render an EJS email template from src/views/emails/.
+ * Automatically injects `appUrl` so templates don't need to read process.env.
+ */
 export const renderEmail = async (templateName, data = {}) => {
   const file = path.join(TEMPLATES_DIR, `${templateName}.ejs`);
   const source = await fs.readFile(file, 'utf8');
-  return ejs.render(source, data, { filename: file });
+
+  // Inject appUrl into the template data. Prefer process.env.APP_URL,
+  // fall back to a reasonable default.
+  const envAppUrl = (process.env.APP_URL || '').trim().replace(/\/$/, '');
+  const injected = {
+    ...data,
+    appUrl: envAppUrl || 'http://localhost:3000',
+  };
+
+  return ejs.render(source, injected, { filename: file });
 };
 
 // ─── Send ───────────────────────────────────────────────
 
-/**
- * Send an email. Never throws.
- * @returns {Promise<{ ok: boolean, skipped?: boolean, error?: string, messageId?: string }>}
- */
 export const sendMail = async (opts) => {
   const {
     to,
@@ -136,7 +136,6 @@ export const sendMail = async (opts) => {
     return { ok: true, messageId: info.messageId };
   } catch (err) {
     console.error('[mailer] send failed:', err.code || '', err.message);
-    // Reset transporter on auth/connection errors so a fixed config can recover.
     if (['EAUTH', 'ECONNECTION', 'ESOCKET', 'ETIMEDOUT', 'ENOTFOUND'].includes(err.code)) {
       transporter = null;
     }
