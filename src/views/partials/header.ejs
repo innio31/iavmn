@@ -72,6 +72,17 @@
     </a>
 
     <div class="site-header-actions">
+      <%# ─── PWA Install button (hidden by default, shown via JS) ─── %>
+      <button type="button"
+              id="pwaInstallBtn"
+              class="site-install-btn"
+              aria-label="Install IAVMN app"
+              title="Install app for quick access"
+              hidden>
+        <span aria-hidden="true">⬇</span>
+        <span class="site-install-label hide-mobile">Install App</span>
+      </button>
+
       <button type="button"
               class="site-search-btn"
               aria-label="Open search"
@@ -153,3 +164,4 @@
 <% } %>
 
 <script src="/js/search-overlay.js" defer></script>
+<script src="/js/pwa-install.js" defer></script>

@@ -12,7 +12,7 @@
   var pageTitle = (typeof title !== 'undefined' && title) ? title : siteShort;
   var fullTitle = (pageTitle === siteShort) ? siteName : (pageTitle + ' | ' + siteShort);
 
-  // ─── Meta description (per-page → post excerpt → tier desc → member bio → default) ───
+  // ─── Meta description ───
   var metaDescription = '';
   if (typeof page !== 'undefined' && page && page.meta_description) {
     metaDescription = page.meta_description;
@@ -32,7 +32,7 @@
   var canonicalPath = currentPath || '/';
   var canonicalUrl = appUrl ? (appUrl + canonicalPath) : canonicalPath;
 
-  // ─── Open Graph image (per-page override → settings default → logo) ───
+  // ─── Open Graph image ───
   var ogImage = null;
   if (typeof post !== 'undefined' && post && post.cover_image_path) ogImage = post.cover_image_path;
   else if (typeof member !== 'undefined' && member && member.photo_path) ogImage = member.photo_path;
@@ -44,15 +44,14 @@
     ogImage = appUrl + ogImage;
   }
 
-  // ─── OG type: article if we're on a post ───
   var ogType = (typeof post !== 'undefined' && post) ? 'article' : 'website';
 
   // ─── Analytics config ───
   var analyticsEnabled = settings && settings.analytics_enabled === '1' && settings.analytics_ga4_id;
   var ga4Id = (settings && settings.analytics_ga4_id) || '';
-  var requireConsent = !settings || settings.analytics_require_consent !== '0'; // default: require
+  var requireConsent = !settings || settings.analytics_require_consent !== '0';
 
-  // ─── Schema.org structured data (site-wide Organization + WebSite) ───
+  // ─── Schema.org structured data ───
   var orgName = (settings && settings.seo_organization_name) || siteName;
   var orgLogo = (settings && settings.seo_organization_logo) || logoPath || null;
   if (orgLogo && appUrl && orgLogo.indexOf('http') !== 0) orgLogo = appUrl + orgLogo;
@@ -68,13 +67,9 @@
     description: metaDescription,
   };
   if (orgLogo) organizationSchema.logo = orgLogo;
-  if (settings && settings.contact_email) {
-    organizationSchema.email = settings.contact_email;
-  }
-  if (settings && settings.contact_phone) {
-    organizationSchema.telephone = settings.contact_phone;
-  }
-  if (orgCity || settings && settings.contact_address) {
+  if (settings && settings.contact_email) organizationSchema.email = settings.contact_email;
+  if (settings && settings.contact_phone) organizationSchema.telephone = settings.contact_phone;
+  if (orgCity || (settings && settings.contact_address)) {
     organizationSchema.address = {
       '@type': 'PostalAddress',
       addressLocality: orgCity || '',
@@ -84,7 +79,6 @@
       organizationSchema.address.streetAddress = settings.contact_address;
     }
   }
-  // Social links
   var sameAs = [];
   ['social_facebook','social_twitter','social_linkedin','social_youtube','social_instagram','social_threads'].forEach(function (k) {
     if (settings && settings[k]) sameAs.push(settings[k]);
@@ -107,8 +101,10 @@
 
   var twitterHandle = (settings && settings.seo_twitter_handle) || '';
 
-  // ─── PWA theme color ───
+  // ─── PWA ───
   var pwaTheme = (settings && settings.pwa_theme_color) || '#25573f';
+  var pwaBackground = (settings && settings.pwa_background_color) || '#edf3f2';
+  var appleIcon = faviconPath || '/uploads/branding/apple-touch-icon.png';
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -129,11 +125,18 @@
   <!-- Favicon -->
   <% if (faviconPath) { %>
     <link rel="icon" type="image/png" href="<%= faviconPath %>">
-    <link rel="apple-touch-icon" href="<%= faviconPath %>">
+    <link rel="apple-touch-icon" href="<%= appleIcon %>">
   <% } %>
 
-  <!-- PWA -->
+  <!-- PWA manifest -->
   <link rel="manifest" href="/site.webmanifest">
+
+  <!-- iOS PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="<%= siteShort %>">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="<%= siteShort %>">
 
   <!-- Open Graph -->
   <meta property="og:type" content="<%= ogType %>">
@@ -172,13 +175,12 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="/css/theme.css">
-    <link rel="stylesheet" href="/css/responsive-helpers.css">
+  <link rel="stylesheet" href="/css/responsive-helpers.css">
 
   <!-- Structured Data: Organization & WebSite -->
   <script type="application/ld+json"><%- JSON.stringify(organizationSchema) %></script>
   <script type="application/ld+json"><%- JSON.stringify(websiteSchema) %></script>
 
-  <%# Per-page structured data — pages can push additional JSON-LD blocks via `structuredData` %>
   <% if (typeof structuredData !== 'undefined' && Array.isArray(structuredData)) { %>
     <% structuredData.forEach(function (block) { %>
       <script type="application/ld+json"><%- JSON.stringify(block) %></script>
@@ -195,7 +197,7 @@
 
   <%- include('../partials/footer') %>
 
-  <%# ─── Cookie consent banner (only when needed) ─── %>
+  <%# ─── Cookie consent banner ─── %>
   <% if (analyticsEnabled && requireConsent) { %>
     <div id="cookieConsent" class="cookie-consent" hidden>
       <div class="cookie-consent-inner">
@@ -221,7 +223,6 @@
 
         function loadAnalytics() {
           <% if (ga4Id) { %>
-            // Inject GA4 snippet
             var s = document.createElement('script');
             s.async = true;
             s.src = 'https://www.googletagmanager.com/gtag/js?id=<%= ga4Id %>';
@@ -254,13 +255,11 @@
         } else if (stored === 'declined') {
           // do nothing
         } else {
-          // First visit — show the banner
           if (banner) banner.hidden = false;
         }
       })();
     </script>
   <% } else if (analyticsEnabled) { %>
-    <%# No consent required — load GA4 immediately %>
     <% if (ga4Id) { %>
       <script async src="https://www.googletagmanager.com/gtag/js?id=<%= ga4Id %>"></script>
       <script>
@@ -271,6 +270,22 @@
       </script>
     <% } %>
   <% } %>
+
+  <%# ─── Service worker registration ─── %>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker
+          .register('/sw.js', { scope: '/' })
+          .then(function (reg) {
+            console.log('[sw] registered, scope:', reg.scope);
+          })
+          .catch(function (err) {
+            console.warn('[sw] registration failed:', err.message);
+          });
+      });
+    }
+  </script>
 
 </body>
 </html>

@@ -4282,3 +4282,48 @@ body.search-overlay-active {
     min-height: 44px;
   }
 }
+/* ─── PWA install button ────────────────────────────── */
+.site-install-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  min-height: 40px;
+  background: var(--secondary);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.site-install-btn:hover {
+  background: var(--primary);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+.site-install-btn:active {
+  transform: translateY(0);
+}
+.site-install-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.site-install-btn[hidden] {
+  display: none !important;
+}
+
+.site-install-label {
+  line-height: 1;
+}
+
+@media (max-width: 640px) {
+  .site-install-btn {
+    padding: 8px 10px;
+    min-height: 38px;
+  }
+}
