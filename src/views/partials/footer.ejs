@@ -1,0 +1,97 @@
+<%
+  const siteName   = settings.site_name || appName;
+  const phone      = settings.contact_phone || null;
+  const phoneAlt   = settings.contact_phone_alt || null;
+  const email      = settings.contact_email || null;
+  const address    = settings.contact_address || null;
+  const hours      = settings.contact_hours || null;
+  const copyright  = settings.footer_copyright || siteName;
+  const credits    = settings.footer_credits || null;
+
+  const socials = [
+    { key: 'social_facebook',  url: settings.social_facebook,  label: 'Facebook',  icon: 'f' },
+    { key: 'social_twitter',   url: settings.social_twitter,   label: 'X',         icon: '𝕏' },
+    { key: 'social_linkedin',  url: settings.social_linkedin,  label: 'LinkedIn',  icon: 'in' },
+    { key: 'social_youtube',   url: settings.social_youtube,   label: 'YouTube',   icon: '▶' },
+    { key: 'social_instagram', url: settings.social_instagram, label: 'Instagram', icon: '◉' },
+    { key: 'social_threads',   url: settings.social_threads,   label: 'Threads',   icon: '@' },
+  ].filter((s) => s.url && s.url.trim() !== '');
+%>
+<footer class="site-footer">
+  <div class="footer-top">
+    <div class="container footer-grid">
+
+      <div class="footer-col">
+        <h3 class="footer-title">Contact</h3>
+        <% if (address) { %>
+          <p class="footer-text"><strong>Address:</strong><br><%= address %></p>
+        <% } %>
+        <% if (phone || phoneAlt) { %>
+          <p class="footer-text"><strong>Phone:</strong><br>
+            <% if (phone) { %><a href="tel:<%= phone.replace(/\s+/g, '') %>"><%= phone %></a><% } %>
+            <% if (phone && phoneAlt) { %><br><% } %>
+            <% if (phoneAlt) { %><a href="tel:<%= phoneAlt.replace(/\s+/g, '') %>"><%= phoneAlt %></a><% } %>
+          </p>
+        <% } %>
+        <% if (email) { %>
+          <p class="footer-text"><strong>Email:</strong><br>
+            <a href="mailto:<%= email %>"><%= email %></a>
+          </p>
+        <% } %>
+        <% if (hours) { %>
+          <p class="footer-text"><strong>Hours:</strong><br><%= hours %></p>
+        <% } %>
+      </div>
+
+      <div class="footer-col">
+        <h3 class="footer-title">Our Institute</h3>
+        <ul class="footer-links">
+          <li><a href="/about">About</a></li>
+          <li><a href="/council-members">Council Members</a></li>
+          <li><a href="/faq">FAQ</a></li>
+          <li><a href="/contact">Contact</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h3 class="footer-title">Membership</h3>
+        <ul class="footer-links">
+          <li><a href="/membership/student">Student Member</a></li>
+          <li><a href="/membership/associate">Associate Member</a></li>
+          <li><a href="/membership/corporate">Corporate Member</a></li>
+          <li><a href="/membership/fellow">Fellow</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h3 class="footer-title">Newsletter</h3>
+        <p class="footer-text">Subscribe for updates, events, and news.</p>
+        <form action="/subscribe" method="POST" class="footer-newsletter">
+          <input type="email" name="email" placeholder="Your email" required maxlength="180" class="footer-input">
+          <button type="submit" class="btn footer-btn">Subscribe</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <div class="container footer-bottom-inner">
+      <div class="footer-copy">
+        &copy; <%= new Date().getFullYear() %> <%= copyright %>. All rights reserved.
+        <% if (credits) { %>
+          <span class="footer-credits">| <%= credits %></span>
+        <% } %>
+      </div>
+      <% if (socials.length) { %>
+        <div class="footer-socials">
+          <% socials.forEach((s) => { %>
+            <a href="<%= s.url %>" target="_blank" rel="noopener noreferrer" aria-label="<%= s.label %>" title="<%= s.label %>">
+              <%= s.icon %>
+            </a>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</footer>

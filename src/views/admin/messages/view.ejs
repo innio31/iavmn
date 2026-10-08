@@ -1,0 +1,74 @@
+<%
+  const senderInitial = (message.name || '?').charAt(0).toUpperCase();
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Message Detail</h1>
+    <p class="page-subtitle">
+      <a href="/admin/messages">&larr; Back to Inbox</a>
+    </p>
+  </div>
+</div>
+
+<div class="admin-card">
+
+  <div class="message-header">
+    <div class="message-avatar"><%= senderInitial %></div>
+    <div class="message-meta">
+      <h2 class="message-from"><%= message.name %></h2>
+      <div class="message-contact">
+        <a href="mailto:<%= message.email %>"><%= message.email %></a>
+        <% if (message.phone) { %>
+          <span class="message-sep">·</span>
+          <a href="tel:<%= message.phone.replace(/\s+/g, '') %>"><%= message.phone %></a>
+        <% } %>
+      </div>
+      <div class="message-date">
+        Received <%= new Date(message.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+        <% if (message.is_read) { %>
+          <span class="badge badge-muted" style="margin-left: 8px;">Read</span>
+        <% } else { %>
+          <span class="badge badge-warning" style="margin-left: 8px;">Unread</span>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <% if (message.subject) { %>
+    <div class="message-subject">
+      <strong>Subject:</strong> <%= message.subject %>
+    </div>
+  <% } %>
+
+  <div class="message-body">
+    <% message.message.split(/\n/).forEach((line) => { %>
+      <% if (line.trim()) { %>
+        <p><%= line %></p>
+      <% } else { %>
+        <br>
+      <% } %>
+    <% }); %>
+  </div>
+
+  <div class="message-actions">
+    <a href="mailto:<%= message.email %>?subject=<%= encodeURIComponent('Re: ' + (message.subject || 'Your message to IAVMN')) %>"
+       class="btn btn-primary">
+      Reply by Email
+    </a>
+
+    <form action="/admin/messages/<%= message.id %>/toggle" method="POST" style="display: inline;">
+      <button type="submit" class="btn btn-outline">
+        <%= message.is_read ? 'Mark as unread' : 'Mark as read' %>
+      </button>
+    </form>
+
+    <form action="/admin/messages/<%= message.id %>/delete" method="POST" style="display: inline;"
+          onsubmit="return confirm('Delete this message? This cannot be undone.');">
+      <button type="submit" class="btn btn-danger">Delete</button>
+    </form>
+
+    <a href="/admin/messages" class="btn btn-outline">Back to Inbox</a>
+  </div>
+
+</div>

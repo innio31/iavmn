@@ -1,0 +1,171 @@
+<%
+  var siteName = (settings && settings.site_name) || appName || 'IAVMN';
+  var siteShort = (settings && settings.site_short_name) || 'IAVMN';
+  var appUrl = (settings && settings.app_url) || 'http://localhost:3000';
+
+  var receivedAt = application.created_at
+    ? new Date(application.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : new Date().toLocaleString('en-GB');
+
+  var hasFee = Number(application.tier_fee || 0) > 0;
+  var feeCurrency = application.payment_currency || application.tier_currency || 'NGN';
+  var feeAmount = Number(application.payment_amount || application.tier_fee || 0);
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New application</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #edf3f2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #212529; line-height: 1.6;">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #edf3f2; padding: 24px 12px;">
+    <tr>
+      <td align="center">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #25573f; padding: 24px 28px; text-align: center;">
+              <div style="font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">
+                <%= siteShort %>
+              </div>
+              <div style="font-size: 13px; color: rgba(255, 255, 255, 0.85); margin-top: 4px;">
+                New Membership Application
+              </div>
+            </td>
+          </tr>
+
+          <!-- Intro -->
+          <tr>
+            <td style="padding: 28px 28px 8px;">
+              <p style="margin: 0 0 8px; font-size: 15px;">
+                A new membership application has been submitted.
+              </p>
+              <p style="margin: 0; font-size: 13px; color: #6c757d;">
+                Received: <%= receivedAt %>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Reference highlight -->
+          <tr>
+            <td style="padding: 16px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7faf9; border-left: 4px solid #25573f; border-radius: 6px;">
+                <tr>
+                  <td style="padding: 16px 20px;">
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-bottom: 4px;">Reference</div>
+                    <div style="font-size: 18px; font-weight: 700; color: #25573f; font-family: monospace; letter-spacing: 0.5px;">
+                      <%= application.reference %>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Applicant details -->
+          <tr>
+            <td style="padding: 8px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 13px; color: #6c757d; width: 40%;">Applicant</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 14px; color: #212529; font-weight: 600;"><%= application.full_name %></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 13px; color: #6c757d;">Email</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 14px; word-break: break-all;">
+                    <a href="mailto:<%= application.email %>" style="color: #25573f; text-decoration: none;"><%= application.email %></a>
+                  </td>
+                </tr>
+                <% if (application.phone) { %>
+                  <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 13px; color: #6c757d;">Phone</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 14px;">
+                      <a href="tel:<%= application.phone.replace(/\s+/g, '') %>" style="color: #25573f; text-decoration: none;"><%= application.phone %></a>
+                    </td>
+                  </tr>
+                <% } %>
+                <tr>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 13px; color: #6c757d;">Tier</td>
+                  <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 14px; color: #212529;"><%= application.tier_name %></td>
+                </tr>
+                <% if (hasFee) { %>
+                  <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 13px; color: #6c757d;">Fee</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 14px; color: #212529;"><%= feeCurrency %> <%= feeAmount.toLocaleString() %></td>
+                  </tr>
+                <% } %>
+                <tr>
+                  <td style="padding: 8px 0; font-size: 13px; color: #6c757d;">Payment status</td>
+                  <td style="padding: 8px 0; font-size: 14px; color: #212529;">
+                    <% if (application.payment_status === 'paid') { %>
+                      <span style="display: inline-block; padding: 3px 10px; background: #d4edda; color: #155724; border-radius: 999px; font-size: 12px; font-weight: 700;">PAID</span>
+                    <% } else { %>
+                      <span style="display: inline-block; padding: 3px 10px; background: #fff3cd; color: #856404; border-radius: 999px; font-size: 12px; font-weight: 700;">PENDING</span>
+                    <% } %>
+                  </td>
+                </tr>
+                <% if (application.employer) { %>
+                  <tr>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 13px; color: #6c757d;">Employer</td>
+                    <td style="padding: 8px 0; border-bottom: 1px solid #edf3f2; font-size: 14px; color: #212529;"><%= application.employer %></td>
+                  </tr>
+                <% } %>
+                <% if (application.years_experience !== null && application.years_experience !== undefined) { %>
+                  <tr>
+                    <td style="padding: 8px 0; font-size: 13px; color: #6c757d;">Years of experience</td>
+                    <td style="padding: 8px 0; font-size: 14px; color: #212529;"><%= application.years_experience %></td>
+                  </tr>
+                <% } %>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Qualifications preview -->
+          <% if (application.qualifications) { %>
+            <tr>
+              <td style="padding: 12px 28px 8px;">
+                <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-bottom: 6px;">Qualifications</div>
+                <div style="font-size: 14px; line-height: 1.7; color: #212529; white-space: pre-wrap; padding: 14px 16px; background-color: #f7faf9; border-radius: 6px; border: 1px solid #dfeae8;">
+                  <%= application.qualifications %>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+
+          <!-- CTA -->
+          <tr>
+            <td style="padding: 12px 28px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background-color: #25573f; border-radius: 6px;">
+                    <a href="<%= appUrl %>/admin/applications/<%= application.id %>"
+                       style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none;">
+                      Review Application
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #edf3f2; padding: 20px 28px; border-top: 1px solid #dfeae8;">
+              <p style="margin: 0; font-size: 12px; color: #6c757d;">
+                &copy; <%= new Date().getFullYear() %> <%= siteName %>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

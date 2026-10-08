@@ -1,0 +1,32 @@
+<section class="page-hero">
+  <div class="container">
+    <h1>You've been unsubscribed</h1>
+    <p>We're sorry to see you go.</p>
+  </div>
+</section>
+
+<section class="unsubscribe-section">
+  <div class="container container-narrow">
+    <div class="unsubscribe-card">
+      <div class="unsubscribe-icon">✉</div>
+
+      <h2 class="unsubscribe-title">Subscription cancelled</h2>
+
+      <p class="unsubscribe-text">
+        The email address <strong><%= email %></strong> has been removed from our newsletter list.
+      </p>
+
+      <p class="unsubscribe-text">
+        You will no longer receive updates, event invitations, or news from <%= (settings && settings.site_short_name) || appName %>.
+      </p>
+
+      <p class="unsubscribe-text text-muted">
+        Changed your mind? You can subscribe again any time using the newsletter form at the bottom of any page.
+      </p>
+
+      <div class="unsubscribe-actions">
+        <a href="/" class="btn btn-primary">Back to Home</a>
+      </div>
+    </div>
+  </div>
+</section>

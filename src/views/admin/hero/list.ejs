@@ -1,0 +1,122 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Hero Slides</h1>
+    <p class="page-subtitle">
+      Manage the homepage carousel. Drag order is controlled by the <strong>Sort</strong> column (lower = first).
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/hero/new" class="btn btn-primary">+ New Slide</a>
+  </div>
+</div>
+
+<% if (!slides || slides.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No hero slides yet.</p>
+      <p><a href="/admin/hero/new" class="btn btn-primary">Create your first slide</a></p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop / tablet: table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width: 90px;">Preview</th>
+          <th>Title</th>
+          <th style="width: 80px;">Sort</th>
+          <th style="width: 100px;">Status</th>
+          <th style="width: 220px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% slides.forEach((slide) => { %>
+          <tr>
+            <td>
+              <% if (slide.image_path) { %>
+                <img src="<%= slide.image_path %>" alt="" style="width: 72px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-light);">
+              <% } else { %>
+                <span class="text-muted">—</span>
+              <% } %>
+            </td>
+            <td>
+              <strong><%= slide.title %></strong>
+              <% if (slide.subtitle) { %>
+                <br><span class="text-muted" style="font-size: 13px;"><%= slide.subtitle %></span>
+              <% } %>
+            </td>
+            <td><%= slide.sort_order %></td>
+            <td>
+              <% if (slide.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Hidden</span>
+              <% } %>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/admin/hero/<%= slide.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+                <form action="/admin/hero/<%= slide.id %>/toggle" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-outline">
+                    <%= slide.is_active ? 'Hide' : 'Show' %>
+                  </button>
+                </form>
+
+                <form action="/admin/hero/<%= slide.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Delete this hero slide? This cannot be undone.');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile: cards ─── %>
+  <div class="show-mobile">
+    <% slides.forEach((slide) => { %>
+      <div class="admin-card">
+        <div class="mobile-card-head">
+          <% if (slide.image_path) { %>
+            <img src="<%= slide.image_path %>" alt="" class="mobile-card-thumb">
+          <% } %>
+          <div class="mobile-card-info">
+            <strong><%= slide.title %></strong>
+            <% if (slide.subtitle) { %>
+              <div class="text-muted" style="font-size: 13px;"><%= slide.subtitle %></div>
+            <% } %>
+            <div class="mobile-card-meta">
+              <span>Sort: <%= slide.sort_order %></span>
+              <% if (slide.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Hidden</span>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/admin/hero/<%= slide.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+          <form action="/admin/hero/<%= slide.id %>/toggle" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline">
+              <%= slide.is_active ? 'Hide' : 'Show' %>
+            </button>
+          </form>
+
+          <form action="/admin/hero/<%= slide.id %>/delete" method="POST" style="display:inline;"
+                onsubmit="return confirm('Delete this hero slide? This cannot be undone.');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

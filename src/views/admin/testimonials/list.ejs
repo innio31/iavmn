@@ -1,0 +1,135 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Testimonials</h1>
+    <p class="page-subtitle">
+      Manage member testimonials. <strong>Order</strong> controls display order (lower = first).
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/testimonials/new" class="btn btn-primary">+ New Testimonial</a>
+  </div>
+</div>
+
+<% if (!testimonials || testimonials.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No testimonials yet.</p>
+      <p><a href="/admin/testimonials/new" class="btn btn-primary">Add your first testimonial</a></p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop / tablet: table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width: 80px;">Photo</th>
+          <th>Author &amp; Quote</th>
+          <th style="width: 70px;">Order</th>
+          <th style="width: 100px;">Status</th>
+          <th style="width: 240px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% testimonials.forEach((t) => { %>
+          <tr>
+            <td>
+              <% if (t.author_photo_path) { %>
+                <img src="<%= t.author_photo_path %>" alt="" class="council-thumb">
+              <% } else { %>
+                <div class="council-thumb testimonial-thumb-placeholder">
+                  <%= (t.author_name || '?').charAt(0).toUpperCase() %>
+                </div>
+              <% } %>
+            </td>
+            <td>
+              <strong><%= t.author_name %></strong>
+              <% if (t.author_title) { %>
+                <br><span class="text-muted" style="font-size: 13px;"><%= t.author_title %></span>
+              <% } %>
+              <br><span class="text-muted" style="font-size: 13px; font-style: italic;">
+                "<%= t.quote.length > 140 ? t.quote.slice(0, 140) + '…' : t.quote %>"
+              </span>
+            </td>
+            <td><%= t.sort_order %></td>
+            <td>
+              <% if (t.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Hidden</span>
+              <% } %>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/admin/testimonials/<%= t.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+                <form action="/admin/testimonials/<%= t.id %>/toggle" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-outline">
+                    <%= t.is_active ? 'Hide' : 'Show' %>
+                  </button>
+                </form>
+
+                <form action="/admin/testimonials/<%= t.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Delete this testimonial? This will also remove the author photo. This cannot be undone.');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile: cards ─── %>
+  <div class="show-mobile">
+    <% testimonials.forEach((t) => { %>
+      <div class="admin-card">
+        <div class="mobile-card-head">
+          <% if (t.author_photo_path) { %>
+            <img src="<%= t.author_photo_path %>" alt="" class="mobile-card-thumb mobile-card-thumb-round">
+          <% } else { %>
+            <div class="mobile-card-thumb mobile-card-thumb-round testimonial-thumb-placeholder">
+              <%= (t.author_name || '?').charAt(0).toUpperCase() %>
+            </div>
+          <% } %>
+          <div class="mobile-card-info">
+            <strong><%= t.author_name %></strong>
+            <% if (t.author_title) { %>
+              <div class="text-muted" style="font-size: 13px;"><%= t.author_title %></div>
+            <% } %>
+            <div class="mobile-card-meta">
+              <span>Order: <%= t.sort_order %></span>
+              <% if (t.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Hidden</span>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <p class="testimonial-mobile-quote">
+          "<%= t.quote.length > 200 ? t.quote.slice(0, 200) + '…' : t.quote %>"
+        </p>
+
+        <div class="mobile-card-actions">
+          <a href="/admin/testimonials/<%= t.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+          <form action="/admin/testimonials/<%= t.id %>/toggle" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline">
+              <%= t.is_active ? 'Hide' : 'Show' %>
+            </button>
+          </form>
+
+          <form action="/admin/testimonials/<%= t.id %>/delete" method="POST" style="display:inline;"
+                onsubmit="return confirm('Delete this testimonial? This will also remove the author photo. This cannot be undone.');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

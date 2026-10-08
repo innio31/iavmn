@@ -1,0 +1,226 @@
+<%
+  const fmtDate = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const fmtDateTime = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const statusBadge = (s) => {
+    if (s === 'active') return 'badge-success';
+    if (s === 'pending') return 'badge-info';
+    if (s === 'suspended') return 'badge-warning';
+    if (s === 'expired') return 'badge-danger';
+    if (s === 'cancelled') return 'badge-muted';
+    return 'badge-muted';
+  };
+
+  const statusLabel = (s) => {
+    if (!s) return '—';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+
+  const daysUntil = (date) => {
+    if (!date) return null;
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return null;
+    return Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  };
+
+  // Build URL helper for filters
+  const buildUrl = (opts = {}) => {
+    const params = new URLSearchParams();
+    const s = opts.status !== undefined ? opts.status : statusFilter;
+    const t = opts.tier !== undefined ? opts.tier : tierFilter;
+    if (s) params.set('status', s);
+    if (t) params.set('tier', t);
+    const qs = params.toString();
+    return '/admin/members' + (qs ? '?' + qs : '');
+  };
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Members</h1>
+    <p class="page-subtitle">
+      <%= totalCount %> total
+      <% if (activeCount > 0) { %>
+        &middot; <strong style="color: #155724;"><%= activeCount %> active</strong>
+      <% } %>
+    </p>
+  </div>
+</div>
+
+<%# ─── Status filter tabs ─── %>
+<nav class="filter-tabs">
+  <a href="<%= buildUrl({ status: null }) %>" class="filter-tab <%= !statusFilter ? 'active' : '' %>">
+    All <span class="filter-tab-count"><%= totalCount %></span>
+  </a>
+  <a href="<%= buildUrl({ status: 'active' }) %>" class="filter-tab <%= statusFilter === 'active' ? 'active' : '' %>">
+    Active
+  </a>
+  <a href="<%= buildUrl({ status: 'pending' }) %>" class="filter-tab <%= statusFilter === 'pending' ? 'active' : '' %>">
+    Pending
+  </a>
+  <a href="<%= buildUrl({ status: 'suspended' }) %>" class="filter-tab <%= statusFilter === 'suspended' ? 'active' : '' %>">
+    Suspended
+  </a>
+  <a href="<%= buildUrl({ status: 'expired' }) %>" class="filter-tab <%= statusFilter === 'expired' ? 'active' : '' %>">
+    Expired
+  </a>
+  <a href="<%= buildUrl({ status: 'cancelled' }) %>" class="filter-tab <%= statusFilter === 'cancelled' ? 'active' : '' %>">
+    Cancelled
+  </a>
+</nav>
+
+<%# ─── Tier filter ─── %>
+<% if (tierOptions && tierOptions.length > 0) { %>
+  <nav class="filter-tabs filter-tabs-secondary">
+    <a href="<%= buildUrl({ tier: null }) %>" class="filter-tab filter-tab-sm <%= !tierFilter ? 'active' : '' %>">
+      Any tier
+    </a>
+    <% tierOptions.forEach((t) => { %>
+      <a href="<%= buildUrl({ tier: t.id }) %>" class="filter-tab filter-tab-sm <%= tierFilter === t.id ? 'active' : '' %>">
+        <%= t.name %>
+      </a>
+    <% }); %>
+  </nav>
+<% } %>
+
+<% if (!members || members.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>
+        <% if (statusFilter || tierFilter) { %>
+          No members match the current filter.
+        <% } else { %>
+          No members yet.
+        <% } %>
+      </p>
+      <p class="text-muted" style="font-size: 14px;">
+        Members appear here automatically when an application is approved.
+      </p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width: 200px;">Member number</th>
+          <th>Name</th>
+          <th style="width: 150px;">Tier</th>
+          <th style="width: 110px;">Status</th>
+          <th style="width: 130px;">Expires</th>
+          <th style="width: 140px;">Last login</th>
+          <th style="width: 100px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% members.forEach((m) => { %>
+          <%
+            const days = daysUntil(m.expires_at);
+            const isExpiringSoon = days !== null && days > 0 && days <= 60;
+            const isExpired = days !== null && days <= 0;
+          %>
+          <tr class="<%= !m.is_verified ? 'row-unread' : '' %>">
+            <td>
+              <code class="page-slug-code"><%= m.member_number %></code>
+            </td>
+            <td>
+              <strong><%= m.full_name %></strong>
+              <br><a href="mailto:<%= m.email %>" style="font-size: 13px; color: #25573f; word-break: break-all;"><%= m.email %></a>
+              <% if (!m.is_verified) { %>
+                <br><span class="badge badge-warning" style="margin-top: 4px;">Not verified</span>
+              <% } %>
+            </td>
+            <td>
+              <span style="font-size: 13px;"><%= m.tier_name || '—' %></span>
+            </td>
+            <td>
+              <span class="badge <%= statusBadge(m.status) %>"><%= statusLabel(m.status) %></span>
+            </td>
+            <td>
+              <span style="font-size: 13px; color: #6c757d;"><%= fmtDate(m.expires_at) %></span>
+              <% if (isExpired && m.status === 'active') { %>
+                <br><span class="badge badge-danger" style="margin-top: 4px;">Expired</span>
+              <% } else if (isExpiringSoon) { %>
+                <br><span class="badge badge-warning" style="margin-top: 4px;"><%= days %>d left</span>
+              <% } %>
+            </td>
+            <td>
+              <span style="font-size: 13px; color: #6c757d;">
+                <%= m.last_login_at ? fmtDateTime(m.last_login_at) : 'Never' %>
+              </span>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/admin/members/<%= m.id %>" class="btn btn-sm btn-outline">View</a>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile cards ─── %>
+  <div class="show-mobile">
+    <% members.forEach((m) => { %>
+      <%
+        const days = daysUntil(m.expires_at);
+        const isExpiringSoon = days !== null && days > 0 && days <= 60;
+        const isExpired = days !== null && days <= 0;
+      %>
+      <div class="admin-card <%= !m.is_verified ? 'card-unread' : '' %>">
+        <div style="margin-bottom: 12px;">
+          <code class="page-slug-code" style="margin-bottom: 8px;"><%= m.member_number %></code>
+          <strong style="display: block; margin: 8px 0 4px; word-break: break-word;"><%= m.full_name %></strong>
+          <a href="mailto:<%= m.email %>" style="font-size: 13px; color: #25573f; word-break: break-all; display: block; margin-bottom: 8px;">
+            <%= m.email %>
+          </a>
+
+          <div class="mobile-card-meta">
+            <span class="badge <%= statusBadge(m.status) %>"><%= statusLabel(m.status) %></span>
+            <% if (!m.is_verified) { %>
+              <span class="badge badge-warning">Not verified</span>
+            <% } %>
+          </div>
+
+          <div class="mobile-card-meta" style="margin-top: 6px;">
+            <span><strong>Tier:</strong> <%= m.tier_name || '—' %></span>
+          </div>
+
+          <div class="mobile-card-meta" style="margin-top: 6px;">
+            <span><strong>Expires:</strong> <%= fmtDate(m.expires_at) %></span>
+            <% if (isExpired && m.status === 'active') { %>
+              <span class="badge badge-danger">Expired</span>
+            <% } else if (isExpiringSoon) { %>
+              <span class="badge badge-warning"><%= days %>d left</span>
+            <% } %>
+          </div>
+
+          <% if (m.last_login_at) { %>
+            <div class="mobile-card-meta" style="margin-top: 6px;">
+              <span>Last login: <%= fmtDateTime(m.last_login_at) %></span>
+            </div>
+          <% } %>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/admin/members/<%= m.id %>" class="btn btn-sm btn-primary">View Member</a>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

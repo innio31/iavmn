@@ -1,0 +1,155 @@
+<%
+  var siteName = settings.site_name || settings.site_short_name || appName;
+  var shortName = settings.site_short_name || siteName;
+  var logoPath = settings.site_logo_path || null;
+  var phone = settings.contact_phone || null;
+  var email = settings.contact_email || null;
+
+  var builtInNav = [
+    { href: '/',                label: 'Home' },
+    { href: '/council-members', label: 'Council Members' },
+    { href: '/membership',      label: 'Membership' },
+    { href: '/news',            label: 'News' },
+    { href: '/faq',             label: 'FAQ' },
+    { href: '/contact',         label: 'Contact' }
+  ];
+
+  var builtInSlugs = [];
+  for (var bi = 0; bi < builtInNav.length; bi++) {
+    builtInSlugs.push(builtInNav[bi].href.replace(/^\//, ''));
+  }
+
+  var menuPages = (typeof locals !== 'undefined' && locals.menuPages) ? locals.menuPages : [];
+  var extraNav = [];
+  for (var mi = 0; mi < menuPages.length; mi++) {
+    var p = menuPages[mi];
+    if (builtInSlugs.indexOf(p.slug) === -1) {
+      extraNav.push({
+        href: '/' + p.slug,
+        label: p.menu_label || p.title
+      });
+    }
+  }
+
+  var navItems = builtInNav.concat(extraNav);
+%>
+<div class="topbar">
+  <div class="container topbar-inner">
+    <div class="topbar-contacts">
+      <% if (phone) { %>
+        <span class="topbar-item">
+          <i class="topbar-icon">&#9742;</i>
+          <a href="tel:<%= phone.replace(/\s+/g, '') %>"><%= phone %></a>
+        </span>
+      <% } %>
+      <% if (email) { %>
+        <span class="topbar-item">
+          <i class="topbar-icon">&#9993;</i>
+          <a href="mailto:<%= email %>"><%= email %></a>
+        </span>
+      <% } %>
+    </div>
+    <div class="topbar-actions">
+      <% if (currentUser) { %>
+        <a href="/admin">Dashboard</a>
+        <span class="topbar-sep">|</span>
+        <a href="/logout">Logout</a>
+      <% } else { %>
+        <a href="/login">Admin Login</a>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<header class="site-header">
+  <div class="container site-header-inner">
+    <a href="/" class="site-logo">
+      <% if (logoPath) { %>
+        <img src="<%= logoPath %>" alt="<%= siteName %>" class="site-logo-img">
+      <% } else { %>
+        <strong><%= shortName %></strong>
+      <% } %>
+    </a>
+
+    <div class="site-header-actions">
+      <button type="button"
+              class="site-search-btn"
+              aria-label="Open search"
+              onclick="openSearchOverlay()">
+        <span aria-hidden="true">&#128269;</span>
+      </button>
+
+      <button type="button"
+              class="nav-toggle"
+              aria-label="Toggle navigation"
+              onclick="document.body.classList.toggle('nav-open')">
+        &#9776;
+      </button>
+    </div>
+
+    <nav class="site-nav">
+      <% for (var ni = 0; ni < navItems.length; ni++) { %>
+        <% var item = navItems[ni]; %>
+        <% var isActive = (currentPath === item.href) || (item.href !== '/' && currentPath.indexOf(item.href + '/') === 0); %>
+        <a href="<%= item.href %>" class="<%= isActive ? 'active' : '' %>">
+          <%= item.label %>
+        </a>
+      <% } %>
+    </nav>
+  </div>
+</header>
+
+<%# ─── Search overlay ─── %>
+<div id="searchOverlay" class="search-overlay" role="dialog" aria-modal="true" aria-labelledby="searchOverlayTitle">
+  <div class="search-overlay-inner">
+    <button type="button"
+            class="search-overlay-close"
+            aria-label="Close search"
+            onclick="closeSearchOverlay()">×</button>
+
+    <h2 id="searchOverlayTitle" class="search-overlay-title">Search <%= shortName %></h2>
+
+    <form action="/search" method="GET" class="search-overlay-form" role="search" onsubmit="return handleOverlaySubmit(event)">
+      <div class="search-overlay-inputwrap">
+        <span class="search-overlay-icon" aria-hidden="true">&#128269;</span>
+        <input
+          type="search"
+          id="overlaySearchInput"
+          name="q"
+          placeholder="Search news, pages, FAQs, council…"
+          maxlength="100"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Search query">
+      </div>
+      <button type="submit" class="btn btn-primary search-overlay-submit">
+        Search
+      </button>
+    </form>
+
+    <div id="overlaySuggestions" class="search-suggestions-panel" aria-live="polite" hidden>
+      <div class="search-suggestions-list" id="overlaySuggestionList"></div>
+      <div class="search-suggestions-footer">
+        <a href="#" id="overlaySeeAllLink">See all results &rarr;</a>
+      </div>
+    </div>
+
+    <div class="search-overlay-hint">
+      Press <kbd>Enter</kbd> to search &middot; <kbd>Esc</kbd> to close
+    </div>
+  </div>
+</div>
+
+<% if (typeof flash !== 'undefined' && Object.keys(flash).length > 0) { %>
+  <div class="flash-container">
+    <% ['success', 'error', 'info', 'warning'].forEach(function (type) { %>
+      <% if (flash[type]) { %>
+        <% flash[type].forEach(function (msg) { %>
+          <div class="flash flash-<%= type %>"><%= msg %></div>
+        <% }); %>
+      <% } %>
+    <% }); %>
+  </div>
+<% } %>
+
+<script src="/js/search-overlay.js" defer></script>

@@ -1,0 +1,108 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Newsletter Subscribers</h1>
+    <p class="page-subtitle">
+      <strong><%= totalActive %></strong> active
+      <% if (totalAll !== totalActive) { %>
+        &middot; <%= totalAll %> total
+      <% } %>
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/subscribers/export.csv" class="btn btn-outline">Export CSV</a>
+  </div>
+</div>
+
+<% if (!subscribers || subscribers.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No subscribers yet.</p>
+      <p class="text-muted" style="font-size: 14px;">
+        When visitors subscribe via the newsletter form in the footer, they'll appear here.
+      </p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop / tablet: table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th style="width: 160px;">Subscribed</th>
+          <th style="width: 110px;">Status</th>
+          <th style="width: 200px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% subscribers.forEach((s) => { %>
+          <tr>
+            <td>
+              <strong><%= s.email %></strong>
+            </td>
+            <td>
+              <span style="font-size: 13px; color: #6c757d;">
+                <%= new Date(s.subscribed_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+              </span>
+            </td>
+            <td>
+              <% if (s.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Unsubscribed</span>
+              <% } %>
+            </td>
+            <td>
+              <div class="row-actions">
+                <form action="/admin/subscribers/<%= s.id %>/toggle" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-outline">
+                    <%= s.is_active ? 'Deactivate' : 'Reactivate' %>
+                  </button>
+                </form>
+
+                <form action="/admin/subscribers/<%= s.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Delete this subscriber? This cannot be undone.');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile: cards ─── %>
+  <div class="show-mobile">
+    <% subscribers.forEach((s) => { %>
+      <div class="admin-card">
+        <div style="margin-bottom: 12px;">
+          <strong style="display: block; word-break: break-all; margin-bottom: 6px;"><%= s.email %></strong>
+          <div class="mobile-card-meta">
+            <% if (s.is_active) { %>
+              <span class="badge badge-success">Active</span>
+            <% } else { %>
+              <span class="badge badge-muted">Unsubscribed</span>
+            <% } %>
+            <span><%= new Date(s.subscribed_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) %></span>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <form action="/admin/subscribers/<%= s.id %>/toggle" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline">
+              <%= s.is_active ? 'Deactivate' : 'Reactivate' %>
+            </button>
+          </form>
+
+          <form action="/admin/subscribers/<%= s.id %>/delete" method="POST" style="display:inline;"
+                onsubmit="return confirm('Delete this subscriber? This cannot be undone.');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

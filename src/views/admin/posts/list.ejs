@@ -1,0 +1,140 @@
+<%
+  const fmtDate = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Posts</h1>
+    <p class="page-subtitle">
+      Manage news, blog posts, and announcements. Published posts appear at <code>/news</code>.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/posts/new" class="btn btn-primary">+ New Post</a>
+  </div>
+</div>
+
+<% if (!posts || posts.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No posts yet.</p>
+      <p><a href="/admin/posts/new" class="btn btn-primary">Write your first post</a></p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop / tablet: table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width: 90px;">Cover</th>
+          <th>Title</th>
+          <th style="width: 120px;">Status</th>
+          <th style="width: 140px;">Published</th>
+          <th style="width: 240px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% posts.forEach((p) => { %>
+          <tr>
+            <td>
+              <% if (p.cover_image_path) { %>
+                <img src="<%= p.cover_image_path %>" alt="" class="post-thumb">
+              <% } else { %>
+                <div class="post-thumb post-thumb-empty">—</div>
+              <% } %>
+            </td>
+            <td>
+              <strong><%= p.title %></strong>
+              <% if (p.excerpt) { %>
+                <br><span class="text-muted" style="font-size: 13px;">
+                  <%= p.excerpt.length > 100 ? p.excerpt.slice(0, 100) + '…' : p.excerpt %>
+                </span>
+              <% } %>
+              <br><code class="page-slug-code" style="margin-top: 6px;">/news/<%= p.slug %></code>
+            </td>
+            <td>
+              <% if (p.is_published) { %>
+                <span class="badge badge-success">Published</span>
+              <% } else { %>
+                <span class="badge badge-warning">Draft</span>
+              <% } %>
+            </td>
+            <td>
+              <span style="font-size: 13px; color: #6c757d;"><%= fmtDate(p.published_at) %></span>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/news/<%= p.slug %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+                <a href="/admin/posts/<%= p.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+                <form action="/admin/posts/<%= p.id %>/toggle" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-outline">
+                    <%= p.is_published ? 'Unpublish' : 'Publish' %>
+                  </button>
+                </form>
+
+                <form action="/admin/posts/<%= p.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Delete this post? This will also remove its cover image. This cannot be undone.');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile: cards ─── %>
+  <div class="show-mobile">
+    <% posts.forEach((p) => { %>
+      <div class="admin-card">
+        <% if (p.cover_image_path) { %>
+          <img src="<%= p.cover_image_path %>" alt="" class="post-cover-mobile">
+        <% } %>
+
+        <div style="margin-bottom: 12px;">
+          <strong style="display: block; margin-bottom: 4px; word-break: break-word;"><%= p.title %></strong>
+          <% if (p.excerpt) { %>
+            <div class="text-muted" style="font-size: 13px; line-height: 1.5; margin-bottom: 8px;">
+              <%= p.excerpt.length > 140 ? p.excerpt.slice(0, 140) + '…' : p.excerpt %>
+            </div>
+          <% } %>
+          <code class="page-slug-code">/news/<%= p.slug %></code>
+          <div class="mobile-card-meta" style="margin-top: 8px;">
+            <% if (p.is_published) { %>
+              <span class="badge badge-success">Published</span>
+            <% } else { %>
+              <span class="badge badge-warning">Draft</span>
+            <% } %>
+            <span><%= fmtDate(p.published_at) %></span>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/news/<%= p.slug %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+          <a href="/admin/posts/<%= p.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+          <form action="/admin/posts/<%= p.id %>/toggle" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline">
+              <%= p.is_published ? 'Unpublish' : 'Publish' %>
+            </button>
+          </form>
+
+          <form action="/admin/posts/<%= p.id %>/delete" method="POST" style="display:inline;"
+                onsubmit="return confirm('Delete this post? This will also remove its cover image. This cannot be undone.');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

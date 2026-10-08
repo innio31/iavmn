@@ -1,0 +1,234 @@
+<%
+  const fmtDate = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
+
+  const siteShort = (settings && settings.site_short_name) || appName || 'IAVMN';
+  const siteName = (settings && settings.site_name) || siteShort;
+
+  const notFound = searched && !member && !foundMember;
+  const inactive = searched && !member && foundMember;
+  const verified = searched && member;
+%>
+
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Verify Membership</h1>
+    <p>Confirm whether a person is a current member of <%= siteShort %>.</p>
+  </div>
+</section>
+
+<section class="verify-section">
+  <div class="container container-narrow">
+
+    <%# ─── Landing state (nothing searched) ─── %>
+    <% if (!searched) { %>
+
+      <div class="verify-how-card">
+        <h2 class="verify-how-title">How verification works</h2>
+
+        <div class="verify-how-steps">
+          <div class="verify-how-step">
+            <div class="verify-how-icon">1</div>
+            <div class="verify-how-body">
+              <strong>Scan the QR code on the certificate</strong>
+              <p>
+                Every IAVMN membership certificate has a unique QR code in the bottom-right corner.
+                Scanning it with your phone's camera opens this verification page automatically —
+                the member number is already filled in.
+              </p>
+            </div>
+          </div>
+
+          <div class="verify-how-step">
+            <div class="verify-how-icon">2</div>
+            <div class="verify-how-body">
+              <strong>Or enter the member number below</strong>
+              <p>
+                If you can't scan the QR — for example, if you're holding a photocopy or
+                were given the number verbally — type it in manually.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="verify-search-card">
+        <h3 class="verify-search-title">Enter a member number</h3>
+        <p class="verify-search-sub">
+          Format: <code>IAVMN/MEM/2026/0001</code>
+        </p>
+
+        <form action="/verify" method="GET" class="verify-search-form" novalidate>
+          <div class="verify-search-row">
+            <input
+              type="text"
+              name="memberNumber"
+              id="memberNumber"
+              value=""
+              required
+              maxlength="40"
+              placeholder="IAVMN/MEM/2026/0001"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              autofocus>
+            <button type="submit" class="btn btn-primary">Verify</button>
+          </div>
+        </form>
+      </div>
+
+    <% } %>
+
+    <%# ─── Result: verified member ─── %>
+    <% if (verified) { %>
+      <div class="verify-result verify-result-success">
+
+        <div class="verify-result-icon verify-result-icon-success">
+          <svg viewBox="0 0 52 52" width="52" height="52" aria-hidden="true">
+            <circle cx="26" cy="26" r="25" fill="none" stroke="currentColor" stroke-width="2"/>
+            <path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M14 27l8 8 16-16"/>
+          </svg>
+        </div>
+
+        <h2 class="verify-result-title">Verified Member</h2>
+        <p class="verify-result-sub">
+          This person is a current, active member of <%= siteName %>.
+        </p>
+
+        <div class="verify-details">
+          <div class="verify-detail-row">
+            <span class="verify-detail-label">Full name</span>
+            <span class="verify-detail-value verify-detail-value-lg"><%= member.full_name %></span>
+          </div>
+
+          <div class="verify-detail-row">
+            <span class="verify-detail-label">Membership grade</span>
+            <span class="verify-detail-value">
+              <span class="verify-tier-badge"><%= member.tier_name || 'Member' %></span>
+            </span>
+          </div>
+
+          <div class="verify-detail-row">
+            <span class="verify-detail-label">Member number</span>
+            <span class="verify-detail-value verify-detail-mono"><%= member.member_number %></span>
+          </div>
+
+          <div class="verify-detail-row">
+            <span class="verify-detail-label">Status</span>
+            <span class="verify-detail-value">
+              <span class="verify-status-pill verify-status-active">
+                <span class="verify-status-dot"></span> Active
+              </span>
+            </span>
+          </div>
+
+          <div class="verify-detail-row">
+            <span class="verify-detail-label">Member since</span>
+            <span class="verify-detail-value"><%= fmtDate(member.joined_at) %></span>
+          </div>
+
+          <% if (member.expires_at) { %>
+            <div class="verify-detail-row">
+              <span class="verify-detail-label">Valid until</span>
+              <span class="verify-detail-value"><%= fmtDate(member.expires_at) %></span>
+            </div>
+          <% } %>
+        </div>
+
+        <div class="verify-privacy-note">
+          <strong>Privacy notice:</strong>
+          Personal contact details are not shown on this page. Only the member can view their own full profile.
+        </div>
+
+        <p class="verify-timestamp">
+          Verified on <%= new Date().toLocaleString('en-GB', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) %>
+        </p>
+
+        <p class="verify-again">
+          <a href="/verify">Verify another member</a>
+        </p>
+
+      </div>
+    <% } %>
+
+    <%# ─── Result: found but not active ─── %>
+    <% if (inactive) { %>
+      <div class="verify-result verify-result-warning">
+
+        <div class="verify-result-icon verify-result-icon-warning">!</div>
+
+        <h2 class="verify-result-title">Membership Not Active</h2>
+        <p class="verify-result-sub">
+          A member with this number exists, but their membership is not currently active.
+        </p>
+
+        <div class="verify-details">
+          <div class="verify-detail-row">
+            <span class="verify-detail-label">Member number</span>
+            <span class="verify-detail-value verify-detail-mono"><%= foundMember.member_number %></span>
+          </div>
+          <div class="verify-detail-row">
+            <span class="verify-detail-label">Status</span>
+            <span class="verify-detail-value" style="text-transform: capitalize;">
+              <span class="verify-status-pill verify-status-inactive">
+                <span class="verify-status-dot"></span> <%= foundMember.status %>
+              </span>
+            </span>
+          </div>
+          <% if (foundMember.expires_at) { %>
+            <div class="verify-detail-row">
+              <span class="verify-detail-label">Expired on</span>
+              <span class="verify-detail-value"><%= fmtDate(foundMember.expires_at) %></span>
+            </div>
+          <% } %>
+        </div>
+
+        <div class="verify-privacy-note">
+          For privacy reasons, we don't display the member's name when the membership is not active.
+          Please <a href="/contact">contact the Institute</a> for confirmation.
+        </div>
+
+        <p class="verify-again">
+          <a href="/verify">Verify another member</a>
+        </p>
+
+      </div>
+    <% } %>
+
+    <%# ─── Result: not found ─── %>
+    <% if (notFound) { %>
+      <div class="verify-result verify-result-error">
+
+        <div class="verify-result-icon verify-result-icon-error">?</div>
+
+        <h2 class="verify-result-title">No Member Found</h2>
+        <p class="verify-result-sub">
+          We couldn't find a member with that number.
+        </p>
+
+        <div class="verify-help">
+          <p><strong>Please check:</strong></p>
+          <ul>
+            <li>The member number is typed exactly as shown on the certificate</li>
+            <li>Forward slashes are included (<code>IAVMN/MEM/2026/0001</code>)</li>
+            <li>Letters are uppercase</li>
+          </ul>
+          <p>
+            Still not finding them? <a href="/contact">Contact the Institute</a> —
+            we'll verify the member manually.
+          </p>
+        </div>
+
+        <p class="verify-again">
+          <a href="/verify">Try another number</a>
+        </p>
+
+      </div>
+    <% } %>
+
+  </div>
+</section>

@@ -1,0 +1,155 @@
+<%
+  const fmtDateTime = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const statusBadge = (s) => {
+    if (s === 'sent') return 'badge-success';
+    if (s === 'sending') return 'badge-info';
+    if (s === 'failed') return 'badge-danger';
+    if (s === 'cancelled') return 'badge-muted';
+    return 'badge-warning'; // draft
+  };
+
+  const statusLabel = (s) => {
+    if (!s) return '—';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  };
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Newsletter</h1>
+    <p class="page-subtitle">
+      <%= total %> campaign<%= total === 1 ? '' : 's' %> on record.
+      Compose and send newsletters to all active subscribers.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/newsletter/new" class="btn btn-primary">+ Compose Newsletter</a>
+  </div>
+</div>
+
+<% if (!sends || sends.length === 0) { %>
+
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No campaigns yet.</p>
+      <p class="text-muted" style="font-size: 14px;">
+        Compose your first newsletter to reach your subscribers.
+      </p>
+      <p style="margin-top: 16px;">
+        <a href="/admin/newsletter/new" class="btn btn-primary">Compose your first newsletter</a>
+      </p>
+    </div>
+  </div>
+
+<% } else { %>
+
+  <%# ─── Desktop table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Subject</th>
+          <th style="width: 120px;">Status</th>
+          <th style="width: 150px;">Recipients</th>
+          <th style="width: 170px;">Created</th>
+          <th style="width: 140px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% sends.forEach((s) => { %>
+          <tr>
+            <td>
+              <strong><%= s.subject %></strong>
+              <% if (s.status === 'sending') { %>
+                <br><span class="text-muted" style="font-size: 12px;">Sending in progress…</span>
+              <% } else if (s.completed_at) { %>
+                <br><span class="text-muted" style="font-size: 12px;">Completed <%= fmtDateTime(s.completed_at) %></span>
+              <% } %>
+            </td>
+            <td>
+              <span class="badge <%= statusBadge(s.status) %>"><%= statusLabel(s.status) %></span>
+            </td>
+            <td>
+              <div style="font-size: 13px; line-height: 1.6;">
+                <strong><%= s.total_recipients %></strong> total
+                <% if (s.sent_count > 0) { %>
+                  <br><span style="color: #155724;">✓ <%= s.sent_count %> sent</span>
+                <% } %>
+                <% if (s.failed_count > 0) { %>
+                  <br><span style="color: #721c24;">✗ <%= s.failed_count %> failed</span>
+                <% } %>
+              </div>
+            </td>
+            <td>
+              <span style="font-size: 13px; color: #6c757d;"><%= fmtDateTime(s.created_at) %></span>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/admin/newsletter/<%= s.id %>" class="btn btn-sm btn-outline">View</a>
+
+                <% if (s.status === 'sending' || s.status === 'draft') { %>
+                  <form action="/admin/newsletter/<%= s.id %>/resume" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-outline">Resume</button>
+                  </form>
+                <% } %>
+
+                <form action="/admin/newsletter/<%= s.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Delete this campaign and its recipient log? This cannot be undone.');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile cards ─── %>
+  <div class="show-mobile">
+    <% sends.forEach((s) => { %>
+      <div class="admin-card">
+        <div style="margin-bottom: 12px;">
+          <strong style="display: block; margin-bottom: 6px; word-break: break-word;"><%= s.subject %></strong>
+          <div class="mobile-card-meta">
+            <span class="badge <%= statusBadge(s.status) %>"><%= statusLabel(s.status) %></span>
+          </div>
+          <div class="mobile-card-meta" style="margin-top: 6px;">
+            <span><strong><%= s.total_recipients %></strong> recipients</span>
+            <% if (s.sent_count > 0) { %>
+              <span style="color: #155724;">✓ <%= s.sent_count %></span>
+            <% } %>
+            <% if (s.failed_count > 0) { %>
+              <span style="color: #721c24;">✗ <%= s.failed_count %></span>
+            <% } %>
+          </div>
+          <div class="mobile-card-meta" style="margin-top: 6px;">
+            <span><%= fmtDateTime(s.created_at) %></span>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/admin/newsletter/<%= s.id %>" class="btn btn-sm btn-outline">View</a>
+
+          <% if (s.status === 'sending' || s.status === 'draft') { %>
+            <form action="/admin/newsletter/<%= s.id %>/resume" method="POST" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-outline">Resume</button>
+            </form>
+          <% } %>
+
+          <form action="/admin/newsletter/<%= s.id %>/delete" method="POST" style="display:inline;"
+                onsubmit="return confirm('Delete this campaign and its recipient log? This cannot be undone.');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

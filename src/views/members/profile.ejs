@@ -1,0 +1,166 @@
+<%
+  const lockedLabel = (v) => (v || '—');
+%>
+
+<div class="m-page-head">
+  <div>
+    <h1 class="m-page-title">My Profile</h1>
+    <p class="m-page-sub">Keep your details up to date so we can reach you.</p>
+  </div>
+  <div class="m-page-actions">
+    <a href="/member" class="btn btn-outline">Back to Dashboard</a>
+  </div>
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="m-banner m-banner-danger">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 6px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<%# ─── Locked identity card ─── %>
+<div class="m-card">
+  <div class="m-card-title">Identity</div>
+  <p class="m-card-subtitle">
+    These details are managed by the Institute and cannot be changed here.
+    Contact us if any need updating.
+  </p>
+
+  <div class="m-info-list">
+    <div class="m-info-row">
+      <span class="m-info-label">Member number</span>
+      <span class="m-info-value m-info-mono"><%= lockedLabel(member.member_number) %></span>
+    </div>
+    <div class="m-info-row">
+      <span class="m-info-label">Email</span>
+      <span class="m-info-value"><%= lockedLabel(member.email) %></span>
+    </div>
+    <div class="m-info-row">
+      <span class="m-info-label">Tier</span>
+      <span class="m-info-value"><%= lockedLabel(member.tier_name) %></span>
+    </div>
+    <div class="m-info-row">
+      <span class="m-info-label">Status</span>
+      <span class="m-info-value" style="text-transform: capitalize;"><%= lockedLabel(member.status) %></span>
+    </div>
+    <div class="m-info-row">
+      <span class="m-info-label">Joined</span>
+      <span class="m-info-value">
+        <%= member.joined_at ? new Date(member.joined_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—' %>
+      </span>
+    </div>
+  </div>
+</div>
+
+<%# ─── Editable profile form ─── %>
+<div class="m-card">
+  <div class="m-card-title">Personal details</div>
+  <p class="m-card-subtitle">Update the fields below and save your changes.</p>
+
+  <form action="/member/profile" method="POST" class="m-form" novalidate>
+
+    <div class="form-row">
+      <label for="full_name">Full name <span style="color: #c0392b;">*</span></label>
+      <input
+        type="text"
+        id="full_name"
+        name="full_name"
+        value="<%= form.full_name %>"
+        required
+        minlength="2"
+        maxlength="180"
+        autocomplete="name">
+    </div>
+
+    <div class="form-row form-row-split">
+      <div>
+        <label for="phone">Phone number</label>
+        <input
+          type="tel"
+          id="phone"
+          name="phone"
+          value="<%= form.phone %>"
+          maxlength="40"
+          autocomplete="tel"
+          inputmode="tel">
+      </div>
+      <div>
+        <label for="years_experience">Years of experience</label>
+        <input
+          type="number"
+          id="years_experience"
+          name="years_experience"
+          value="<%= form.years_experience %>"
+          min="0"
+          max="80"
+          inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label for="address">Residential address</label>
+      <textarea
+        id="address"
+        name="address"
+        rows="3"
+        maxlength="300"
+        autocomplete="street-address"><%= form.address %></textarea>
+    </div>
+
+    <div class="form-row">
+      <label for="employer">Current employer / organisation</label>
+      <input
+        type="text"
+        id="employer"
+        name="employer"
+        value="<%= form.employer %>"
+        maxlength="200">
+    </div>
+
+    <div class="form-row">
+      <label for="qualifications">Professional qualifications &amp; certifications</label>
+      <textarea
+        id="qualifications"
+        name="qualifications"
+        rows="5"
+        maxlength="2000"
+        placeholder="One per line."><%= form.qualifications %></textarea>
+      <span class="form-hint">
+        <span id="qualCount"><%= (form.qualifications || '').length %></span> / 2000
+      </span>
+    </div>
+
+    <div class="m-form-actions">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+      <a href="/member" class="btn btn-outline">Cancel</a>
+    </div>
+
+  </form>
+</div>
+
+<%# ─── Security / password ─── %>
+<div class="m-card">
+  <div class="m-card-title">Password</div>
+  <p class="m-card-subtitle">
+    Need to change your password? Request a reset link and we'll email you a secure page.
+  </p>
+  <p>
+    <a href="/member/forgot-password" class="btn btn-outline">Send Reset Link</a>
+  </p>
+</div>
+
+<script>
+  (function () {
+    var ta = document.getElementById('qualifications');
+    var counter = document.getElementById('qualCount');
+    if (!ta || !counter) return;
+    function update() { counter.textContent = ta.value.length; }
+    ta.addEventListener('input', update);
+    update();
+  })();
+</script>

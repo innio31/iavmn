@@ -1,0 +1,236 @@
+<%
+  const fmtDate = (dt) => {
+    if (!dt) return '';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
+
+  const blocks = (post.body || '')
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const isSubheading = (text) => {
+    const t = text.trim();
+    if (!t) return false;
+    if (t.length > 80) return false;
+    if (t.includes('\n')) return false;
+    const endsWithColon = /:$/.test(t);
+    const noTrailingPunct = !/[.!?,;]$/.test(t);
+    return endsWithColon || noTrailingPunct;
+  };
+
+  const siteName = (settings && settings.site_name) || appName || 'IAVMN';
+  const siteShort = (settings && settings.site_short_name) || 'IAVMN';
+  const appUrl = ((settings && settings.app_url) || '').replace(/\/$/, '');
+
+  const shareUrl = appUrl + '/news/' + post.slug;
+  const shareText = encodeURIComponent(post.title);
+  const shareUrlEnc = encodeURIComponent(shareUrl);
+
+  // ─── Per-page structured data: Article ───
+  const articleImage = post.cover_image_path
+    ? (post.cover_image_path.indexOf('http') === 0 ? post.cover_image_path : appUrl + post.cover_image_path)
+    : null;
+
+  const logoUrl = (settings && settings.site_logo_path)
+    ? (settings.site_logo_path.indexOf('http') === 0 ? settings.site_logo_path : appUrl + settings.site_logo_path)
+    : null;
+
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.excerpt || undefined,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': shareUrl,
+    },
+  };
+
+  if (articleImage) {
+    articleSchema.image = [articleImage];
+  }
+  if (post.published_at) {
+    articleSchema.datePublished = new Date(post.published_at).toISOString();
+  }
+  if (post.updated_at) {
+    articleSchema.dateModified = new Date(post.updated_at).toISOString();
+  } else if (post.published_at) {
+    articleSchema.dateModified = new Date(post.published_at).toISOString();
+  }
+
+  articleSchema.author = {
+    '@type': 'Organization',
+    name: siteName,
+  };
+
+  articleSchema.publisher = {
+    '@type': 'Organization',
+    name: siteName,
+  };
+  if (logoUrl) {
+    articleSchema.publisher.logo = {
+      '@type': 'ImageObject',
+      url: logoUrl,
+    };
+  }
+
+  const structuredData = [articleSchema];
+%>
+
+<section class="post-hero">
+  <% if (post.cover_image_path) { %>
+    <div class="post-hero-cover" style="background-image: url('<%= post.cover_image_path %>');">
+      <div class="post-hero-overlay"></div>
+    </div>
+  <% } else { %>
+    <div class="post-hero-cover post-hero-cover-placeholder">
+      <div class="post-hero-overlay"></div>
+    </div>
+  <% } %>
+
+  <div class="container post-hero-content">
+    <% if (post.published_at) { %>
+      <div class="post-hero-date"><%= fmtDate(post.published_at) %></div>
+    <% } %>
+    <h1 class="post-hero-title"><%= post.title %></h1>
+    <% if (post.excerpt) { %>
+      <p class="post-hero-excerpt"><%= post.excerpt %></p>
+    <% } %>
+  </div>
+</section>
+
+<section class="post-body-section">
+  <div class="container container-narrow">
+
+    <p class="profile-back">
+      <a href="/news">&larr; Back to News</a>
+    </p>
+
+    <% if (blocks.length) { %>
+      <article class="post-body">
+        <% blocks.forEach((block) => { %>
+          <% if (isSubheading(block)) { %>
+            <h2 class="post-subheading"><%= block %></h2>
+          <% } else { %>
+            <p><%= block.replace(/\n/g, ' ') %></p>
+          <% } %>
+        <% }); %>
+      </article>
+    <% } else { %>
+      <p class="text-muted">This post has no content yet.</p>
+    <% } %>
+
+    <%# ─── Share buttons ─── %>
+    <div class="post-share">
+      <span class="post-share-label">Share this article:</span>
+      <div class="post-share-buttons">
+        <a
+          href="https://api.whatsapp.com/send?text=<%= shareText %>%20<%= shareUrlEnc %>"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="share-btn share-whatsapp"
+          aria-label="Share on WhatsApp"
+          title="Share on WhatsApp">WhatsApp</a>
+        <a
+          href="https://twitter.com/intent/tweet?text=<%= shareText %>&url=<%= shareUrlEnc %>"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="share-btn share-x"
+          aria-label="Share on X"
+          title="Share on X">X</a>
+        <a
+          href="https://www.facebook.com/sharer/sharer.php?u=<%= shareUrlEnc %>"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="share-btn share-facebook"
+          aria-label="Share on Facebook"
+          title="Share on Facebook">Facebook</a>
+        <a
+          href="https://www.linkedin.com/sharing/share-offsite/?url=<%= shareUrlEnc %>"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="share-btn share-linkedin"
+          aria-label="Share on LinkedIn"
+          title="Share on LinkedIn">LinkedIn</a>
+        <button
+          type="button"
+          class="share-btn share-copy"
+          onclick="copyPostLink()"
+          data-url="<%= shareUrl %>"
+          aria-label="Copy link"
+          title="Copy link">Copy Link</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<% if (related && related.length) { %>
+  <section class="related-section">
+    <div class="container">
+      <h2 class="related-title">You might also like</h2>
+      <div class="related-grid">
+        <% related.forEach((r) => { %>
+          <a href="/news/<%= r.slug %>" class="related-card">
+            <div class="related-card-cover">
+              <% if (r.cover_image_path) { %>
+                <img src="<%= r.cover_image_path %>" alt="<%= r.title %>" loading="lazy">
+              <% } else { %>
+                <div class="related-card-cover-placeholder">
+                  <%= siteShort %>
+                </div>
+              <% } %>
+            </div>
+            <div class="related-card-body">
+              <% if (r.published_at) { %>
+                <div class="related-card-date"><%= fmtDate(r.published_at) %></div>
+              <% } %>
+              <h3 class="related-card-title"><%= r.title %></h3>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+    </div>
+  </section>
+<% } %>
+
+<script>
+  function copyPostLink() {
+    var btn = event.currentTarget;
+    var url = btn.getAttribute('data-url');
+    if (!url) return;
+
+    function done() {
+      var original = btn.textContent;
+      btn.textContent = 'Link copied!';
+      btn.classList.add('share-copied');
+      setTimeout(function () {
+        btn.textContent = original;
+        btn.classList.remove('share-copied');
+      }, 1800);
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(function () {
+        fallbackCopy(url, done);
+      });
+    } else {
+      fallbackCopy(url, done);
+    }
+  }
+
+  function fallbackCopy(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+</script>

@@ -1,0 +1,279 @@
+<%
+  const hasFee = Number(tier.fee_amount) > 0;
+  const totalSteps = 3;
+%>
+
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <p class="apply-crumb"><a href="/membership/<%= tier.slug %>">&larr; Back to <%= tier.name %></a></p>
+    <h1>Apply for <%= tier.name %></h1>
+    <p>Complete the form below to submit your membership application.</p>
+  </div>
+</section>
+
+<section class="apply-section">
+  <div class="container container-narrow">
+
+    <%# ─── Tier summary strip ─── %>
+    <div class="apply-tier-strip">
+      <div class="apply-tier-icon"><%= tier.icon || '★' %></div>
+      <div class="apply-tier-info">
+        <div class="apply-tier-name"><%= tier.name %></div>
+        <% if (tier.short_description) { %>
+          <div class="apply-tier-desc"><%= tier.short_description %></div>
+        <% } %>
+      </div>
+      <div class="apply-tier-fee">
+        <% if (hasFee) { %>
+          <span class="apply-tier-fee-label">Fee</span>
+          <span class="apply-tier-fee-amount"><%= tier.currency %> <%= Number(tier.fee_amount).toLocaleString() %></span>
+        <% } else { %>
+          <span class="apply-tier-fee-label">Cost</span>
+          <span class="apply-tier-fee-amount">Free</span>
+        <% } %>
+      </div>
+    </div>
+
+    <%# ─── Progress steps ─── %>
+    <ol class="apply-steps">
+      <li class="apply-step active">
+        <span class="apply-step-num">1</span>
+        <span class="apply-step-label">Your details</span>
+      </li>
+      <li class="apply-step">
+        <span class="apply-step-num">2</span>
+        <span class="apply-step-label">Uploads</span>
+      </li>
+      <li class="apply-step">
+        <span class="apply-step-num">3</span>
+        <span class="apply-step-label"><%= paystackEnabled ? 'Payment' : 'Confirmation' %></span>
+      </li>
+    </ol>
+
+    <% if (errors && errors.length) { %>
+      <div class="contact-error-box">
+        <strong>Please fix the following:</strong>
+        <ul>
+          <% errors.forEach((e) => { %>
+            <li><%= e.msg %></li>
+          <% }); %>
+        </ul>
+      </div>
+    <% } %>
+
+    <form
+      action="/membership/<%= tier.slug %>/apply"
+      method="POST"
+      enctype="multipart/form-data"
+      class="apply-form"
+      novalidate>
+
+      <%# ─── Section 1: Personal details ─── %>
+      <fieldset class="apply-fieldset">
+        <legend class="apply-legend">
+          <span class="apply-legend-num">1</span>
+          Personal details
+        </legend>
+
+        <div class="form-row">
+          <label for="full_name">Full name <span style="color: #c0392b;">*</span></label>
+          <input
+            type="text"
+            id="full_name"
+            name="full_name"
+            value="<%= form.full_name %>"
+            required
+            minlength="2"
+            maxlength="180"
+            autocomplete="name"
+            placeholder="e.g. Jane Doe">
+        </div>
+
+        <div class="form-row form-row-split">
+          <div>
+            <label for="email">Email address <span style="color: #c0392b;">*</span></label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value="<%= form.email %>"
+              required
+              maxlength="180"
+              autocomplete="email"
+              inputmode="email">
+          </div>
+          <div>
+            <label for="phone">Phone number <span style="color: #c0392b;">*</span></label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value="<%= form.phone %>"
+              required
+              minlength="7"
+              maxlength="40"
+              autocomplete="tel"
+              inputmode="tel"
+              placeholder="08012345678">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="address">Residential address <span style="color: #c0392b;">*</span></label>
+          <textarea
+            id="address"
+            name="address"
+            rows="3"
+            required
+            minlength="5"
+            maxlength="300"
+            autocomplete="street-address"
+            placeholder="Street, city, state"><%= form.address %></textarea>
+        </div>
+
+        <div class="form-row">
+          <label for="employer">Current employer / organisation</label>
+          <input
+            type="text"
+            id="employer"
+            name="employer"
+            value="<%= form.employer %>"
+            maxlength="200"
+            placeholder="Optional">
+        </div>
+      </fieldset>
+
+      <%# ─── Section 2: Professional details ─── %>
+      <fieldset class="apply-fieldset">
+        <legend class="apply-legend">
+          <span class="apply-legend-num">2</span>
+          Professional details
+        </legend>
+
+        <div class="form-row">
+          <label for="qualifications">Professional qualifications &amp; certifications</label>
+          <textarea
+            id="qualifications"
+            name="qualifications"
+            rows="5"
+            maxlength="2000"
+            placeholder="e.g. B.Sc Accounting, ACA, MBA — one per line."><%= form.qualifications %></textarea>
+          <span class="form-hint">
+            <span id="qualCount"><%= (form.qualifications || '').length %></span> / 2000
+          </span>
+        </div>
+
+        <div class="form-row">
+          <label for="years_experience">Years of professional experience</label>
+          <input
+            type="number"
+            id="years_experience"
+            name="years_experience"
+            value="<%= form.years_experience %>"
+            min="0"
+            max="80"
+            inputmode="numeric"
+            placeholder="e.g. 5">
+        </div>
+      </fieldset>
+
+      <%# ─── Section 3: Uploads ─── %>
+      <fieldset class="apply-fieldset">
+        <legend class="apply-legend">
+          <span class="apply-legend-num">3</span>
+          Uploads
+        </legend>
+
+        <div class="form-row">
+          <label for="cv">Curriculum Vitae (CV) <span style="color: #c0392b;">*</span></label>
+          <input
+            type="file"
+            id="cv"
+            name="cv"
+            accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            required>
+          <span class="form-hint">
+            PDF, DOC, or DOCX. Max 5 MB. Show your education, work history, and qualifications.
+          </span>
+        </div>
+
+        <div class="form-row">
+          <label for="photo">Passport photograph <span style="color: #c0392b;">*</span></label>
+          <input
+            type="file"
+            id="photo"
+            name="photo"
+            accept="image/png,image/jpeg,image/webp"
+            required
+            onchange="previewPhoto(event)">
+          <span class="form-hint">
+            JPG, PNG, or WEBP. Max 5 MB. A clear headshot on a plain background.
+          </span>
+
+          <div class="image-preview-container" id="newPreviewWrap" style="display: none; margin-top: 10px;">
+            <span class="form-hint">Photo preview:</span>
+            <img src="" alt="Photo preview" class="image-preview image-preview-square" id="newPreview">
+          </div>
+        </div>
+      </fieldset>
+
+      <%# ─── Confirmation ─── %>
+      <div class="form-row apply-confirm">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            name="agree"
+            value="1"
+            required
+            <%= form.agree === '1' ? 'checked' : '' %>>
+          <span>
+            I confirm that the information provided is accurate and complete.
+            I understand that providing false information may result in my application being rejected.
+          </span>
+        </label>
+      </div>
+
+      <%# ─── Submit ─── %>
+      <div class="apply-actions">
+        <button type="submit" class="btn btn-primary btn-block-mobile">
+          <%= paystackEnabled ? 'Continue to Payment' : 'Submit Application' %>
+        </button>
+        <a href="/membership/<%= tier.slug %>" class="btn btn-outline btn-block-mobile">Cancel</a>
+      </div>
+
+      <p class="apply-terms">
+        By submitting, you agree to our <a href="/privacy">Privacy Policy</a>.
+      </p>
+
+    </form>
+
+  </div>
+</section>
+
+<script>
+  (function () {
+    var ta = document.getElementById('qualifications');
+    var counter = document.getElementById('qualCount');
+    if (!ta || !counter) return;
+    function update() { counter.textContent = ta.value.length; }
+    ta.addEventListener('input', update);
+    update();
+  })();
+
+  function previewPhoto(event) {
+    var input = event.target;
+    var wrap = document.getElementById('newPreviewWrap');
+    var img = document.getElementById('newPreview');
+    if (input.files && input.files[0]) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        img.src = e.target.result;
+        wrap.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      img.src = '';
+      wrap.style.display = 'none';
+    }
+  }
+</script>

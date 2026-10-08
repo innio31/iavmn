@@ -1,0 +1,155 @@
+<%
+  const firstName = (member.full_name || '').split(/\s+/)[0] || 'there';
+
+  const statusBadge = (s) => {
+    if (s === 'active') return { cls: 'm-status-active', label: 'Active' };
+    if (s === 'pending') return { cls: 'm-status-pending', label: 'Pending' };
+    if (s === 'suspended') return { cls: 'm-status-suspended', label: 'Suspended' };
+    if (s === 'expired') return { cls: 'm-status-expired', label: 'Expired' };
+    if (s === 'cancelled') return { cls: 'm-status-cancelled', label: 'Cancelled' };
+    return { cls: 'm-status-pending', label: s };
+  };
+
+  const badge = statusBadge(member.status);
+%>
+
+<div class="m-page-head">
+  <div>
+    <h1 class="m-page-title">Welcome back, <%= firstName %>.</h1>
+    <p class="m-page-sub">
+      Member number <strong><%= member.member_number %></strong>
+    </p>
+  </div>
+  <div class="m-page-actions">
+    <a href="/member/certificate" class="btn btn-outline">View Certificate</a>
+  </div>
+</div>
+
+<%# ─── Notification banners ─── %>
+<% if (isExpired && member.status !== 'suspended' && member.status !== 'cancelled') { %>
+  <div class="m-banner m-banner-danger">
+    <strong>Your membership has expired.</strong>
+    It expired on <%= fmtDate(member.expires_at) %>. Please contact the Institute to renew.
+  </div>
+<% } else if (isExpiringSoon) { %>
+  <div class="m-banner m-banner-warning">
+    <strong>Your membership expires in <%= daysLeft %> day<%= daysLeft === 1 ? '' : 's' %>.</strong>
+    Expiry date: <%= fmtDate(member.expires_at) %>. Please contact the Institute to renew.
+  </div>
+<% } %>
+
+<% if (!isVerified) { %>
+  <div class="m-banner m-banner-info">
+    <strong>Please verify your email.</strong>
+    We haven't confirmed your email yet. This doesn't affect your access, but verifying helps us reach you.
+  </div>
+<% } %>
+
+<%# ─── Status + membership summary ─── %>
+<div class="m-dashboard-grid">
+
+  <%# Status card %>
+  <div class="m-card m-card-status">
+    <div class="m-card-title">Membership status</div>
+    <div class="m-status-badge <%= badge.cls %>">
+      <span class="m-status-dot"></span>
+      <span><%= badge.label %></span>
+    </div>
+
+    <% if (member.status === 'active' && member.expires_at) { %>
+      <div class="m-status-meta">
+        <span class="m-status-meta-label">Valid until</span>
+        <span class="m-status-meta-value"><%= fmtDate(member.expires_at) %></span>
+      </div>
+    <% } %>
+
+    <% if (isExpired && member.expires_at) { %>
+      <div class="m-status-meta">
+        <span class="m-status-meta-label">Expired on</span>
+        <span class="m-status-meta-value"><%= fmtDate(member.expires_at) %></span>
+      </div>
+    <% } %>
+  </div>
+
+  <%# Membership card %>
+  <div class="m-card m-card-membership">
+    <div class="m-card-title">My membership</div>
+
+    <div class="m-info-list">
+      <div class="m-info-row">
+        <span class="m-info-label">Tier</span>
+        <span class="m-info-value"><%= member.tier_name || '—' %></span>
+      </div>
+      <div class="m-info-row">
+        <span class="m-info-label">Member number</span>
+        <span class="m-info-value m-info-mono"><%= member.member_number %></span>
+      </div>
+      <div class="m-info-row">
+        <span class="m-info-label">Joined</span>
+        <span class="m-info-value"><%= fmtDate(member.joined_at) %></span>
+      </div>
+      <div class="m-info-row">
+        <span class="m-info-label">Expires</span>
+        <span class="m-info-value"><%= fmtDate(member.expires_at) %></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<%# ─── Quick actions ─── %>
+<div class="m-card">
+  <div class="m-card-title">Quick actions</div>
+  <p class="m-card-subtitle">Everything you can do from your member portal.</p>
+
+  <div class="m-quick-grid">
+    <a href="/member/profile" class="m-quick-action">
+      <span class="m-quick-icon">☺</span>
+      <span class="m-quick-label">Edit Profile</span>
+      <span class="m-quick-hint">Update your details</span>
+    </a>
+    <a href="/member/certificate" class="m-quick-action">
+      <span class="m-quick-icon">✦</span>
+      <span class="m-quick-label">Certificate</span>
+      <span class="m-quick-hint">View &amp; download</span>
+    </a>
+    <a href="/member/payments" class="m-quick-action">
+      <span class="m-quick-icon">₦</span>
+      <span class="m-quick-label">Payments</span>
+      <span class="m-quick-hint">See your history</span>
+    </a>
+    <a href="/contact" class="m-quick-action">
+      <span class="m-quick-icon">✉</span>
+      <span class="m-quick-label">Contact Us</span>
+      <span class="m-quick-hint">We're here to help</span>
+    </a>
+  </div>
+</div>
+
+<%# ─── Account info ─── %>
+<div class="m-card">
+  <div class="m-card-title">Account</div>
+  <div class="m-info-list">
+    <div class="m-info-row">
+      <span class="m-info-label">Name</span>
+      <span class="m-info-value"><%= member.full_name %></span>
+    </div>
+    <div class="m-info-row">
+      <span class="m-info-label">Email</span>
+      <span class="m-info-value"><%= member.email %></span>
+    </div>
+    <% if (member.phone) { %>
+      <div class="m-info-row">
+        <span class="m-info-label">Phone</span>
+        <span class="m-info-value"><%= member.phone %></span>
+      </div>
+    <% } %>
+    <div class="m-info-row">
+      <span class="m-info-label">Last login</span>
+      <span class="m-info-value"><%= fmtDate(member.last_login_at) %></span>
+    </div>
+  </div>
+  <p class="m-info-hint">
+    To change your password or email, please <a href="/contact">contact the Institute</a>.
+  </p>
+</div>

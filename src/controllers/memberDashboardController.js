@@ -1,0 +1,175 @@
+// src/controllers/memberDashboardController.js
+// Member portal: dashboard, profile, payments, certificate page.
+
+import { body, validationResult } from 'express-validator';
+import {
+  findMemberById,
+  updateMemberProfile,
+} from '../models/memberModel.js';
+import { listApplications } from '../models/applicationModel.js';
+
+// ─── Validation ─────────────────────────────────────────
+
+export const profileValidators = [
+  body('full_name')
+    .trim()
+    .isLength({ min: 2, max: 180 })
+    .withMessage('Full name must be between 2 and 180 characters.'),
+  body('phone')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 40 })
+    .withMessage('Phone number is too long.'),
+  body('address')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 300 })
+    .withMessage('Address cannot exceed 300 characters.'),
+  body('employer')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 200 })
+    .withMessage('Employer cannot exceed 200 characters.'),
+  body('qualifications')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 2000 })
+    .withMessage('Qualifications cannot exceed 2000 characters.'),
+  body('years_experience')
+    .optional({ checkFalsy: true })
+    .isInt({ min: 0, max: 80 })
+    .withMessage('Years of experience must be between 0 and 80.'),
+];
+
+// ─── Helpers ────────────────────────────────────────────
+
+const daysUntil = (date) => {
+  if (!date) return null;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return null;
+  const diff = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  return diff;
+};
+
+const fmtDate = (dt) => {
+  if (!dt) return '—';
+  const d = new Date(dt);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+};
+
+// ─── Dashboard ──────────────────────────────────────────
+
+export const showDashboard = async (req, res) => {
+  const member = await findMemberById(req.member.id);
+
+  const daysLeft = daysUntil(member.expires_at);
+  const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 60;
+  const isExpired = daysLeft !== null && daysLeft <= 0;
+  const isVerified = member.is_verified === 1;
+
+  res.render('members/dashboard', {
+    layout: 'layouts/member',
+    title: 'My Dashboard',
+    member,
+    daysLeft,
+    isExpiringSoon,
+    isExpired,
+    isVerified,
+    fmtDate,
+  });
+};
+
+// ─── Profile ────────────────────────────────────────────
+
+export const showProfile = async (req, res) => {
+  const member = await findMemberById(req.member.id);
+
+  res.render('members/profile', {
+    layout: 'layouts/member',
+    title: 'My Profile',
+    member,
+    form: {
+      full_name: member.full_name || '',
+      phone: member.phone || '',
+      address: member.address || '',
+      employer: member.employer || '',
+      qualifications: member.qualifications || '',
+      years_experience: member.years_experience ?? '',
+    },
+    errors: [],
+  });
+};
+
+export const postProfile = async (req, res) => {
+  const member = await findMemberById(req.member.id);
+  const result = validationResult(req);
+
+  if (!result.isEmpty()) {
+    return res.status(422).render('members/profile', {
+      layout: 'layouts/member',
+      title: 'My Profile',
+      member,
+      form: {
+        full_name: req.body.full_name || '',
+        phone: req.body.phone || '',
+        address: req.body.address || '',
+        employer: req.body.employer || '',
+        qualifications: req.body.qualifications || '',
+        years_experience: req.body.years_experience ?? '',
+      },
+      errors: result.array(),
+    });
+  }
+
+  await updateMemberProfile(member.id, {
+    full_name: req.body.full_name.trim(),
+    phone: (req.body.phone || '').trim() || null,
+    address: (req.body.address || '').trim() || null,
+    employer: (req.body.employer || '').trim() || null,
+    qualifications: (req.body.qualifications || '').trim() || null,
+    years_experience: req.body.years_experience ? Number(req.body.years_experience) : null,
+  });
+
+  // Keep session name in sync
+  req.session.member.full_name = req.body.full_name.trim();
+
+  req.flash('success', 'Your profile has been updated.');
+  res.redirect('/member/profile');
+};
+
+// ─── Payments ───────────────────────────────────────────
+
+export const showPayments = async (req, res) => {
+  const member = await findMemberById(req.member.id);
+
+  // Find any paid applications for this member's email
+  const allApps = await listApplications({ paymentStatus: 'paid' });
+  const memberPayments = allApps.filter(
+    (a) => a.email && a.email.toLowerCase() === member.email.toLowerCase()
+  );
+
+  // Compute total paid
+  const totalPaid = memberPayments.reduce(
+    (sum, p) => sum + Number(p.payment_amount || 0),
+    0
+  );
+
+  res.render('members/payments', {
+    layout: 'layouts/member',
+    title: 'Payment History',
+    member,
+    payments: memberPayments,
+    totalPaid,
+    fmtDate,
+  });
+};
+
+// ─── Certificate (view page; PDF generated by separate controller) ──
+
+export const showCertificate = async (req, res) => {
+  const member = await findMemberById(req.member.id);
+
+  res.render('members/certificate', {
+    layout: 'layouts/member',
+    title: 'My Certificate',
+    member,
+    fmtDate,
+  });
+};

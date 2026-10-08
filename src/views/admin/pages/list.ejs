@@ -1,0 +1,125 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Pages</h1>
+    <p class="page-subtitle">
+      Manage standalone pages like About, Privacy Policy, Terms. Sorted by most recently updated.
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/pages/new" class="btn btn-primary">+ New Page</a>
+  </div>
+</div>
+
+<% if (!pages || pages.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No pages yet.</p>
+      <p><a href="/admin/pages/new" class="btn btn-primary">Create your first page</a></p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop / tablet: table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th style="width: 180px;">URL</th>
+          <th style="width: 140px;">Status</th>
+          <th style="width: 130px;">Updated</th>
+          <th style="width: 240px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% pages.forEach((p) => { %>
+          <tr>
+            <td>
+              <strong><%= p.title %></strong>
+              <% if (p.meta_description) { %>
+                <br><span class="text-muted" style="font-size: 13px;">
+                  <%= p.meta_description.length > 100 ? p.meta_description.slice(0, 100) + '…' : p.meta_description %>
+                </span>
+              <% } %>
+            </td>
+            <td>
+              <code class="page-slug-code">/<%= p.slug %></code>
+            </td>
+            <td>
+              <% if (p.is_published) { %>
+                <span class="badge badge-success">Published</span>
+              <% } else { %>
+                <span class="badge badge-warning">Draft</span>
+              <% } %>
+              <% if (p.show_in_menu) { %>
+                <br><span class="badge badge-info" style="margin-top: 6px;">In menu</span>
+              <% } %>
+            </td>
+            <td>
+              <span style="font-size: 13px; color: #6c757d;">
+                <%= new Date(p.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) %>
+              </span>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/<%= p.slug %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+                <a href="/admin/pages/<%= p.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+                <form action="/admin/pages/<%= p.id %>/toggle" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-outline">
+                    <%= p.is_published ? 'Unpublish' : 'Publish' %>
+                  </button>
+                </form>
+
+                <form action="/admin/pages/<%= p.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Delete this page? This cannot be undone.');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile: cards ─── %>
+  <div class="show-mobile">
+    <% pages.forEach((p) => { %>
+      <div class="admin-card">
+        <div style="margin-bottom: 12px;">
+          <strong style="display: block; margin-bottom: 4px;"><%= p.title %></strong>
+          <code class="page-slug-code">/<%= p.slug %></code>
+          <div class="mobile-card-meta">
+            <% if (p.is_published) { %>
+              <span class="badge badge-success">Published</span>
+            <% } else { %>
+              <span class="badge badge-warning">Draft</span>
+            <% } %>
+            <% if (p.show_in_menu) { %>
+              <span class="badge badge-info">In menu</span>
+            <% } %>
+            <span>Updated: <%= new Date(p.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) %></span>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/<%= p.slug %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+          <a href="/admin/pages/<%= p.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+          <form action="/admin/pages/<%= p.id %>/toggle" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline">
+              <%= p.is_published ? 'Unpublish' : 'Publish' %>
+            </button>
+          </form>
+
+          <form action="/admin/pages/<%= p.id %>/delete" method="POST" style="display:inline;"
+                onsubmit="return confirm('Delete this page? This cannot be undone.');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

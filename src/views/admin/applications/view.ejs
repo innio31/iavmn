@@ -1,0 +1,396 @@
+<%
+  const fmtDate = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const fmtDateTime = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const statusLabel = (s) => {
+    if (s === 'submitted') return 'Submitted';
+    if (s === 'under_review') return 'Under review';
+    if (s === 'approved') return 'Approved';
+    if (s === 'rejected') return 'Rejected';
+    return s || '—';
+  };
+
+  const statusBadge = (s) => {
+    if (s === 'submitted') return 'badge-info';
+    if (s === 'under_review') return 'badge-warning';
+    if (s === 'approved') return 'badge-success';
+    if (s === 'rejected') return 'badge-danger';
+    return 'badge-muted';
+  };
+
+  const paymentLabel = (s) => {
+    if (s === 'paid') return 'Paid';
+    if (s === 'pending') return 'Pending';
+    if (s === 'failed') return 'Failed';
+    if (s === 'refunded') return 'Refunded';
+    return s || '—';
+  };
+
+  const paymentBadge = (s) => {
+    if (s === 'paid') return 'badge-success';
+    if (s === 'pending') return 'badge-warning';
+    if (s === 'failed') return 'badge-danger';
+    if (s === 'refunded') return 'badge-muted';
+    return 'badge-muted';
+  };
+
+  const memberStatusBadge = (s) => {
+    if (s === 'active') return 'badge-success';
+    if (s === 'pending') return 'badge-info';
+    if (s === 'suspended') return 'badge-warning';
+    if (s === 'expired') return 'badge-danger';
+    if (s === 'cancelled') return 'badge-muted';
+    return 'badge-muted';
+  };
+
+  const isPdf = application.cv_path && application.cv_path.toLowerCase().endsWith('.pdf');
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Application <%= application.reference %></h1>
+    <p class="page-subtitle">
+      <a href="/admin/applications">&larr; Back to Applications</a>
+    </p>
+  </div>
+  <div class="page-actions">
+    <span class="badge <%= statusBadge(application.status) %>" style="font-size: 12px; padding: 6px 12px;">
+      <%= statusLabel(application.status) %>
+    </span>
+  </div>
+</div>
+
+<%# ─── Member Account card (only if a member already exists) ─── %>
+<% if (typeof member !== 'undefined' && member) { %>
+  <div class="admin-card" style="border-color: #c3e6cb; background: linear-gradient(180deg, #f7fdfa 0%, #ffffff 60%);">
+    <div class="app-member-head">
+      <div>
+        <h3 class="admin-card-title" style="margin: 0 0 4px;">Member Account</h3>
+        <p class="text-muted" style="margin: 0; font-size: 14px;">
+          This applicant is a registered member.
+        </p>
+      </div>
+      <span class="badge <%= memberStatusBadge(member.status) %>" style="font-size: 12px; padding: 6px 12px; text-transform: capitalize;">
+        <%= member.status %>
+      </span>
+    </div>
+
+    <div class="app-member-grid">
+      <div class="app-member-item">
+        <div class="app-detail-label">Member number</div>
+        <div class="app-member-value-wrap">
+          <code class="page-slug-code" id="memberNumberBox"><%= member.member_number %></code>
+          <button type="button" class="app-member-copy" onclick="copyMemberNumber()" title="Copy member number">
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <div class="app-member-item">
+        <div class="app-detail-label">Tier</div>
+        <div class="app-detail-value"><%= member.tier_name || '—' %></div>
+      </div>
+
+      <div class="app-member-item">
+        <div class="app-detail-label">Joined</div>
+        <div class="app-detail-value"><%= fmtDate(member.joined_at) %></div>
+      </div>
+
+      <div class="app-member-item">
+        <div class="app-detail-label">Expires</div>
+        <div class="app-detail-value"><%= fmtDate(member.expires_at) %></div>
+      </div>
+
+      <div class="app-member-item">
+        <div class="app-detail-label">Email verified</div>
+        <div class="app-detail-value">
+          <% if (member.is_verified) { %>
+            <span class="badge badge-success">Yes</span>
+          <% } else { %>
+            <span class="badge badge-warning">Not yet</span>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="app-member-item">
+        <div class="app-detail-label">Last login</div>
+        <div class="app-detail-value"><%= member.last_login_at ? fmtDateTime(member.last_login_at) : 'Never' %></div>
+      </div>
+    </div>
+
+    <div class="app-member-actions">
+      <form action="/admin/applications/<%= application.id %>/resend-welcome" method="POST" style="display:inline;"
+            onsubmit="return confirm('Send a fresh set-password link to <%= member.email %>?');">
+        <button type="submit" class="btn btn-sm btn-outline">
+          <%= member.is_verified ? 'Resend password reset link' : 'Resend welcome email' %>
+        </button>
+      </form>
+
+      <form action="/admin/members/<%= member.id %>" method="GET" style="display:inline;">
+        <button type="submit" class="btn btn-sm btn-outline">View member record</button>
+      </form>
+
+      <a href="/verify/<%= encodeURIComponent(member.member_number) %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
+        Public verification page
+      </a>
+    </div>
+  </div>
+<% } %>
+
+<%# ─── Summary card ─── %>
+<div class="admin-card">
+  <div class="app-detail-head">
+    <div class="app-detail-avatar">
+      <% if (application.photo_path) { %>
+        <img src="<%= application.photo_path %>" alt="<%= application.full_name %>" class="app-photo">
+      <% } else { %>
+        <div class="app-photo app-photo-placeholder">
+          <%= (application.full_name || '?').charAt(0).toUpperCase() %>
+        </div>
+      <% } %>
+    </div>
+    <div class="app-detail-meta">
+      <h2 class="app-detail-name"><%= application.full_name %></h2>
+      <div class="app-detail-tier">
+        <strong>Tier:</strong> <%= application.tier_name %>
+        <% if (application.tier_fee !== null && application.tier_fee !== undefined && Number(application.tier_fee) > 0) { %>
+          <span class="text-muted">
+            &middot; <%= application.tier_currency || 'NGN' %> <%= Number(application.tier_fee).toLocaleString() %>
+          </span>
+        <% } %>
+      </div>
+      <div class="app-detail-date">
+        Applied <%= fmtDateTime(application.created_at) %>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-detail-grid">
+    <div class="app-detail-row">
+      <div class="app-detail-label">Email</div>
+      <div class="app-detail-value">
+        <a href="mailto:<%= application.email %>"><%= application.email %></a>
+      </div>
+    </div>
+
+    <% if (application.phone) { %>
+      <div class="app-detail-row">
+        <div class="app-detail-label">Phone</div>
+        <div class="app-detail-value">
+          <a href="tel:<%= application.phone.replace(/\s+/g, '') %>"><%= application.phone %></a>
+        </div>
+      </div>
+    <% } %>
+
+    <% if (application.address) { %>
+      <div class="app-detail-row">
+        <div class="app-detail-label">Address</div>
+        <div class="app-detail-value"><%= application.address %></div>
+      </div>
+    <% } %>
+
+    <% if (application.employer) { %>
+      <div class="app-detail-row">
+        <div class="app-detail-label">Employer</div>
+        <div class="app-detail-value"><%= application.employer %></div>
+      </div>
+    <% } %>
+
+    <% if (application.years_experience !== null && application.years_experience !== undefined) { %>
+      <div class="app-detail-row">
+        <div class="app-detail-label">Experience</div>
+        <div class="app-detail-value"><%= application.years_experience %> year<%= application.years_experience === 1 ? '' : 's' %></div>
+      </div>
+    <% } %>
+  </div>
+
+  <% if (application.qualifications) { %>
+    <div class="app-qualifications">
+      <div class="app-detail-label">Qualifications</div>
+      <div class="app-qualifications-body"><%= application.qualifications %></div>
+    </div>
+  <% } %>
+</div>
+
+<%# ─── Uploads card ─── %>
+<div class="admin-card">
+  <h3 class="admin-card-title">Uploaded documents</h3>
+  <div class="app-uploads-grid">
+    <div class="app-upload-item">
+      <div class="app-upload-icon"><%= isPdf ? '📄' : '📝' %></div>
+      <div class="app-upload-info">
+        <div class="app-upload-title">Curriculum Vitae</div>
+        <% if (application.cv_path) { %>
+          <a href="<%= application.cv_path %>" target="_blank" rel="noopener" class="app-upload-link">Open CV &rarr;</a>
+        <% } else { %>
+          <span class="text-muted">Not uploaded</span>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="app-upload-item">
+      <div class="app-upload-icon">🖼</div>
+      <div class="app-upload-info">
+        <div class="app-upload-title">Passport Photograph</div>
+        <% if (application.photo_path) { %>
+          <a href="<%= application.photo_path %>" target="_blank" rel="noopener" class="app-upload-link">View photo &rarr;</a>
+        <% } else { %>
+          <span class="text-muted">Not uploaded</span>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# ─── Payment card ─── %>
+<div class="admin-card">
+  <h3 class="admin-card-title">Payment</h3>
+
+  <div class="app-payment-status">
+    <span class="badge <%= paymentBadge(application.payment_status) %>" style="font-size: 12px; padding: 6px 12px;">
+      <%= paymentLabel(application.payment_status) %>
+    </span>
+  </div>
+
+  <% if (application.payment_status === 'paid') { %>
+    <div class="app-payment-details">
+      <div class="app-detail-row">
+        <div class="app-detail-label">Amount</div>
+        <div class="app-detail-value">
+          <strong><%= application.payment_currency || 'NGN' %> <%= Number(application.payment_amount || 0).toLocaleString() %></strong>
+        </div>
+      </div>
+      <% if (application.payment_reference) { %>
+        <div class="app-detail-row">
+          <div class="app-detail-label">Payment reference</div>
+          <div class="app-detail-value">
+            <code class="page-slug-code"><%= application.payment_reference %></code>
+          </div>
+        </div>
+      <% } %>
+      <% if (application.payment_paid_at) { %>
+        <div class="app-detail-row">
+          <div class="app-detail-label">Paid on</div>
+          <div class="app-detail-value"><%= fmtDateTime(application.payment_paid_at) %></div>
+        </div>
+      <% } %>
+    </div>
+  <% } else if (application.payment_status === 'pending' && Number(application.tier_fee) > 0) { %>
+    <p class="text-muted" style="margin: 0 0 12px;">
+      The applicant has not yet completed payment. They can pay using the reference
+      <code class="page-slug-code"><%= application.reference %></code>.
+    </p>
+  <% } else if (Number(application.tier_fee) === 0 || application.tier_fee === null) { %>
+    <p class="text-muted" style="margin: 0;">This is a free tier — no payment required.</p>
+  <% } %>
+</div>
+
+<%# ─── Review / decision card ─── %>
+<div class="admin-card">
+  <h3 class="admin-card-title">Review &amp; decision</h3>
+
+  <% if (typeof member !== 'undefined' && member) { %>
+    <div class="admin-card" style="background: #f7faf9; border-color: #dfeae8; padding: 14px 16px; margin-bottom: 20px;">
+      <p style="margin: 0; font-size: 14px; color: #495057; line-height: 1.6;">
+        <strong>Already approved.</strong>
+        The member account for this application has been created. Further status changes won't trigger a new welcome email.
+      </p>
+    </div>
+  <% } %>
+
+  <form action="/admin/applications/<%= application.id %>/status" method="POST">
+    <div class="form-row">
+      <label for="status">Update status</label>
+      <select id="status" name="status" required>
+        <option value="submitted" <%= application.status === 'submitted' ? 'selected' : '' %>>Submitted</option>
+        <option value="under_review" <%= application.status === 'under_review' ? 'selected' : '' %>>Under review</option>
+        <option value="approved" <%= application.status === 'approved' ? 'selected' : '' %>>Approved</option>
+        <option value="rejected" <%= application.status === 'rejected' ? 'selected' : '' %>>Rejected</option>
+      </select>
+      <span class="form-hint">
+        Marking as <strong>approved</strong> creates a member account and emails the applicant a set-password link.
+        <strong>Rejected</strong> sends a decision email with your notes.
+      </span>
+    </div>
+
+    <div class="form-row">
+      <label for="admin_notes">Admin notes (internal or sent with decision)</label>
+      <textarea
+        id="admin_notes"
+        name="admin_notes"
+        rows="4"
+        maxlength="2000"
+        placeholder="Internal notes or a message to include with the decision email."><%= application.admin_notes || '' %></textarea>
+      <span class="form-hint">
+        If you reject, these notes are included in the notification email to the applicant.
+      </span>
+    </div>
+
+    <div class="settings-actions">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+</div>
+
+<%# ─── Danger zone ─── %>
+<div class="admin-card admin-card-danger">
+  <h3 class="admin-card-title" style="color: #721c24;">Danger zone</h3>
+  <p style="margin: 0 0 14px; font-size: 14px; color: #6c757d;">
+    Deleting this application will permanently remove it along with the uploaded CV and photo.
+    <% if (typeof member !== 'undefined' && member) { %>
+      <strong>Note:</strong> the associated member account will remain active.
+    <% } %>
+    This action cannot be undone.
+  </p>
+  <form action="/admin/applications/<%= application.id %>/delete" method="POST"
+        onsubmit="return confirm('Delete this application? This will also remove the CV and photo. This cannot be undone.');">
+    <button type="submit" class="btn btn-danger">Delete Application</button>
+  </form>
+</div>
+
+<script>
+  function copyMemberNumber() {
+    var box = document.getElementById('memberNumberBox');
+    var btn = event.currentTarget;
+    if (!box) return;
+    var text = box.textContent.trim();
+
+    function done() {
+      var original = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = original;
+        btn.classList.remove('copied');
+      }, 1800);
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () { fallback(text, done); });
+    } else {
+      fallback(text, done);
+    }
+  }
+
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+</script>

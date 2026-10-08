@@ -1,0 +1,51 @@
+<section class="page-hero">
+  <div class="container">
+    <h1>Membership</h1>
+    <p>Choose the category that matches your professional stage. Join a growing community of asset and value management professionals.</p>
+  </div>
+</section>
+
+<section class="membership-section">
+  <div class="container">
+    <% if (!tiers || tiers.length === 0) { %>
+      <div class="empty-public">
+        <p>Membership categories are being updated. Please check back soon.</p>
+      </div>
+    <% } else { %>
+      <div class="tiers-grid">
+        <% tiers.forEach((t) => { %>
+          <div class="tier-card">
+            <% if (t.icon) { %>
+              <div class="tier-card-icon"><%= t.icon %></div>
+            <% } %>
+
+            <h3 class="tier-card-name"><%= t.name %></h3>
+
+            <% if (t.short_description) { %>
+              <p class="tier-card-desc"><%= t.short_description %></p>
+            <% } %>
+
+            <div class="tier-card-fee">
+              <% if (Number(t.fee_amount) > 0) { %>
+                <span class="tier-fee-label">Application fee</span>
+                <span class="tier-fee-amount"><%= t.currency %> <%= Number(t.fee_amount).toLocaleString() %></span>
+              <% } else { %>
+                <span class="tier-fee-label">Free to apply</span>
+                <span class="tier-fee-amount">&nbsp;</span>
+              <% } %>
+            </div>
+
+            <div class="tier-card-actions">
+              <a href="/membership/<%= t.slug %>" class="btn btn-outline">Learn More</a>
+              <a href="/membership/<%= t.slug %>/apply" class="btn btn-primary">Apply Now</a>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+
+      <p class="membership-note">
+        Not sure which category fits you? <a href="/contact">Contact us</a> and we'll help you decide.
+      </p>
+    <% } %>
+  </div>
+</section>

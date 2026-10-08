@@ -1,0 +1,218 @@
+<%
+  const hasFee = Number(application.payment_amount || application.tier_fee) > 0;
+  const feeAmount = Number(application.payment_amount || application.tier_fee || 0);
+  const feeCurrency = application.payment_currency || application.tier_currency || 'NGN';
+  const isPaid = application.payment_status === 'paid';
+  const isPendingPayment = application.payment_status === 'pending' && hasFee;
+%>
+
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Application Submitted</h1>
+    <p>Thank you for applying. Here is your reference number.</p>
+  </div>
+</section>
+
+<section class="apply-section">
+  <div class="container container-narrow">
+
+    <div class="success-card">
+
+      <div class="success-icon">
+        <svg viewBox="0 0 52 52" width="60" height="60" aria-hidden="true">
+          <circle cx="26" cy="26" r="25" fill="none" stroke="#25573f" stroke-width="2"/>
+          <path fill="none" stroke="#25573f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M14 27l8 8 16-16"/>
+        </svg>
+      </div>
+
+      <h2 class="success-title">
+        <% if (isPaid) { %>
+          Payment Received — Application Complete
+        <% } else if (isPendingPayment) { %>
+          Application Received
+        <% } else { %>
+          Application Received
+        <% } %>
+      </h2>
+
+      <p class="success-text">
+        We've received your application for <strong><%= application.tier_name %></strong>.
+        A confirmation email has been sent to <strong><%= application.email %></strong>.
+      </p>
+
+      <%# ─── Reference number card ─── %>
+      <div class="reference-box">
+        <div class="reference-label">Your reference number</div>
+        <div class="reference-value" id="referenceValue"><%= application.reference %></div>
+        <button
+          type="button"
+          class="reference-copy"
+          onclick="copyReference()"
+          data-ref="<%= application.reference %>">
+          Copy reference
+        </button>
+      </div>
+
+      <p class="reference-note">
+        Keep this reference safe. You'll need it for any correspondence with the Institute.
+      </p>
+
+      <%# ─── Payment status / action ─── %>
+      <% if (isPendingPayment) { %>
+        <div class="payment-pending-box">
+          <div class="payment-pending-title">Payment required</div>
+          <div class="payment-pending-body">
+            <p>
+              To complete your application, please pay the application fee of
+              <strong><%= feeCurrency %> <%= feeAmount.toLocaleString() %></strong>.
+            </p>
+            <p class="payment-pending-actions">
+              <a href="/membership/apply/<%= application.reference %>/pay" class="btn btn-primary">
+                Pay <%= feeCurrency %> <%= feeAmount.toLocaleString() %> Now
+              </a>
+            </p>
+            <p class="payment-pending-note">
+              You can also complete payment later using the same reference number.
+            </p>
+          </div>
+        </div>
+      <% } else if (isPaid) { %>
+        <div class="payment-paid-box">
+          <div class="payment-paid-icon">✓</div>
+          <div class="payment-paid-body">
+            <div class="payment-paid-title">Payment confirmed</div>
+            <div class="payment-paid-detail">
+              <%= feeCurrency %> <%= feeAmount.toLocaleString() %> paid successfully.
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <%# ─── Application summary ─── %>
+      <div class="summary-box">
+        <h3 class="summary-title">Application summary</h3>
+
+        <table class="summary-table">
+          <tbody>
+            <tr>
+              <th>Reference</th>
+              <td><%= application.reference %></td>
+            </tr>
+            <tr>
+              <th>Membership tier</th>
+              <td><%= application.tier_name %></td>
+            </tr>
+            <tr>
+              <th>Full name</th>
+              <td><%= application.full_name %></td>
+            </tr>
+            <tr>
+              <th>Email</th>
+              <td><%= application.email %></td>
+            </tr>
+            <% if (application.phone) { %>
+              <tr>
+                <th>Phone</th>
+                <td><%= application.phone %></td>
+              </tr>
+            <% } %>
+            <% if (application.employer) { %>
+              <tr>
+                <th>Employer</th>
+                <td><%= application.employer %></td>
+              </tr>
+            <% } %>
+            <% if (application.years_experience !== null && application.years_experience !== undefined) { %>
+              <tr>
+                <th>Experience</th>
+                <td><%= application.years_experience %> year<%= application.years_experience === 1 ? '' : 's' %></td>
+              </tr>
+            <% } %>
+            <tr>
+              <th>Status</th>
+              <td>
+                <% if (application.status === 'submitted') { %>
+                  <span class="badge badge-info">Submitted</span>
+                <% } else if (application.status === 'under_review') { %>
+                  <span class="badge badge-warning">Under review</span>
+                <% } else if (application.status === 'approved') { %>
+                  <span class="badge badge-success">Approved</span>
+                <% } else if (application.status === 'rejected') { %>
+                  <span class="badge badge-danger">Rejected</span>
+                <% } %>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <%# ─── What happens next ─── %>
+      <div class="next-steps">
+        <h3 class="next-steps-title">What happens next?</h3>
+        <ol class="next-steps-list">
+          <% if (isPendingPayment) { %>
+            <li>
+              <strong>Complete payment</strong> — use the reference number above if you need to return later.
+            </li>
+          <% } %>
+          <li>
+            <strong>Review</strong> — our membership team will review your application. This usually takes 3–5 business days.
+          </li>
+          <li>
+            <strong>Decision</strong> — you'll receive an email notification with the outcome.
+          </li>
+          <% if (application.status !== 'rejected') { %>
+            <li>
+              <strong>Welcome package</strong> — if approved, you'll receive your membership certificate and next steps.
+            </li>
+          <% } %>
+        </ol>
+      </div>
+
+      <%# ─── Actions ─── %>
+      <div class="success-actions">
+        <a href="/" class="btn btn-outline">Back to Home</a>
+        <a href="/membership" class="btn btn-outline">View All Tiers</a>
+      </div>
+
+    </div>
+
+  </div>
+</section>
+
+<script>
+  function copyReference() {
+    var btn = event.currentTarget;
+    var ref = btn.getAttribute('data-ref');
+    if (!ref) return;
+
+    function done() {
+      var original = btn.textContent;
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = original;
+        btn.classList.remove('copied');
+      }, 1800);
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ref).then(done).catch(function () {
+        fallback(ref, done);
+      });
+    } else {
+      fallback(ref, done);
+    }
+  }
+
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+</script>

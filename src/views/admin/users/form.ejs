@@ -1,0 +1,139 @@
+<%
+  const isEdit = mode === 'edit';
+  const action = isEdit ? `/admin/users/${user.id}` : '/admin/users';
+  const pageTitle = isEdit ? 'Edit Admin User' : 'New Admin User';
+  const self = typeof isSelf !== 'undefined' ? isSelf : false;
+
+  const roleOptions = [
+    { value: 'super_admin', label: 'Super Admin — full access, manages other users' },
+    { value: 'admin', label: 'Admin — everything except user management' },
+    { value: 'editor', label: 'Editor — manage content only' },
+    { value: 'membership_officer', label: 'Membership Officer — review applications only' },
+  ];
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><%= pageTitle %></h1>
+    <p class="page-subtitle">
+      <a href="/admin/users">&larr; Back to Users</a>
+    </p>
+  </div>
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="admin-card" style="border-color: #f5c6cb; background: #f8d7da; color: #721c24;">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 8px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<% if (self) { %>
+  <div class="admin-card" style="border-color: #bee5eb; background: #d1ecf1; color: #0c5460;">
+    <strong>Note:</strong> You're editing your own account. You cannot disable or demote yourself, to prevent lockout.
+  </div>
+<% } %>
+
+<form action="<%= action %>" method="POST" class="admin-card" novalidate>
+
+  <div class="form-row">
+    <label for="name">Full name <span style="color: #c0392b;">*</span></label>
+    <input type="text" id="name" name="name" value="<%= user.name || '' %>"
+           required minlength="2" maxlength="120" autocomplete="name" autofocus>
+  </div>
+
+  <div class="form-row">
+    <label for="email">Email address <span style="color: #c0392b;">*</span></label>
+    <input type="email" id="email" name="email" value="<%= user.email || '' %>"
+           required maxlength="180" autocomplete="email" inputmode="email">
+    <span class="form-hint">Used for login. Must be unique.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="role">Role <span style="color: #c0392b;">*</span></label>
+    <select id="role" name="role" required <%= self ? 'disabled' : '' %>>
+      <% roleOptions.forEach((r) => { %>
+        <option value="<%= r.value %>" <%= user.role === r.value ? 'selected' : '' %>>
+          <%= r.label %>
+        </option>
+      <% }); %>
+    </select>
+    <% if (self) { %>
+      <input type="hidden" name="role" value="<%= user.role %>">
+      <span class="form-hint">You cannot change your own role.</span>
+    <% } %>
+  </div>
+
+  <% if (!isEdit) { %>
+    <hr class="admin-divider">
+    <h3 class="admin-section-heading">Password</h3>
+
+    <div class="form-row">
+      <label for="password">Password <span style="color: #c0392b;">*</span></label>
+      <input type="password" id="password" name="password"
+             required minlength="8" maxlength="100" autocomplete="new-password">
+      <span class="form-hint">Minimum 8 characters. They can change it later.</span>
+    </div>
+
+    <div class="form-row">
+      <label for="password_confirm">Confirm password <span style="color: #c0392b;">*</span></label>
+      <input type="password" id="password_confirm" name="password_confirm"
+             required minlength="8" maxlength="100" autocomplete="new-password">
+    </div>
+  <% } %>
+
+  <hr class="admin-divider">
+  <h3 class="admin-section-heading">Status</h3>
+
+  <div class="form-row">
+    <label class="checkbox-label">
+      <input type="checkbox" name="is_active" value="1"
+             <%= user.is_active ? 'checked' : '' %>
+             <%= self ? 'disabled' : '' %>>
+      <span>Active (can log in)</span>
+    </label>
+    <% if (self) { %>
+      <input type="hidden" name="is_active" value="1">
+      <span class="form-hint">You cannot disable your own account.</span>
+    <% } %>
+  </div>
+
+  <div class="settings-actions">
+    <button type="submit" class="btn btn-primary">
+      <%= isEdit ? 'Save Changes' : 'Create User' %>
+    </button>
+    <a href="/admin/users" class="btn btn-outline">Cancel</a>
+  </div>
+
+</form>
+
+<% if (isEdit) { %>
+  <div class="admin-card">
+    <h3 class="admin-card-title">Change password</h3>
+    <p class="text-muted" style="font-size: 14px; margin-top: 0;">
+      Set a new password for this user. They will use it the next time they log in.
+    </p>
+
+    <form action="/admin/users/<%= user.id %>/password" method="POST">
+      <div class="form-row form-row-split">
+        <div>
+          <label for="new_password">New password</label>
+          <input type="password" id="new_password" name="new_password"
+                 required minlength="8" maxlength="100" autocomplete="new-password">
+        </div>
+        <div>
+          <label for="new_password_confirm">Confirm new password</label>
+          <input type="password" id="new_password_confirm" name="new_password_confirm"
+                 required minlength="8" maxlength="100" autocomplete="new-password">
+        </div>
+      </div>
+      <div class="settings-actions" style="margin-top: 8px;">
+        <button type="submit" class="btn btn-outline">Update Password</button>
+      </div>
+    </form>
+  </div>
+<% } %>

@@ -1,0 +1,221 @@
+<%
+  const isEdit = mode === 'edit';
+  const action = isEdit ? `/admin/tiers/${tier.id}` : '/admin/tiers';
+  const pageTitle = isEdit ? 'Edit Membership Tier' : 'New Membership Tier';
+
+  // Curated icon set — safe, cross-platform emojis
+  const iconChoices = [
+    '🎓', '👥', '💼', '🏅', '⭐', '✓', '◆', '▲',
+    '🔑', '📘', '📗', '📙', '🛡️', '🏛️', '🌐', '💠',
+  ];
+
+  const suggestedSlug = (tier.name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  // Common currency codes
+  const currencies = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR'];
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><%= pageTitle %></h1>
+    <p class="page-subtitle">
+      <a href="/admin/tiers">&larr; Back to Membership Tiers</a>
+    </p>
+  </div>
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="admin-card" style="border-color: #f5c6cb; background: #f8d7da; color: #721c24;">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 8px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<form action="<%= action %>" method="POST" class="admin-card" novalidate>
+
+  <div class="form-row">
+    <label for="name">Tier name <span style="color: #c0392b;">*</span></label>
+    <input
+      type="text"
+      id="name"
+      name="name"
+      value="<%= tier.name || '' %>"
+      required
+      minlength="2"
+      maxlength="120"
+      placeholder="e.g. Student Member"
+      autofocus
+      oninput="suggestSlug()">
+  </div>
+
+  <div class="form-row">
+    <label for="slug">Custom URL (optional)</label>
+    <input
+      type="text"
+      id="slug"
+      name="slug"
+      value="<%= tier.slug || '' %>"
+      maxlength="60"
+      pattern="[a-z0-9-]+"
+      placeholder="<%= suggestedSlug || 'auto-generated-from-name' %>">
+    <span class="form-hint">
+      Leave blank to auto-generate from the name.
+      URL will be <code>/membership/<span id="slugPreview"><%= tier.slug || suggestedSlug || 'auto' %></span></code>.
+    </span>
+  </div>
+
+  <div class="form-row">
+    <label for="short_description">Short description</label>
+    <input
+      type="text"
+      id="short_description"
+      name="short_description"
+      value="<%= tier.short_description || '' %>"
+      maxlength="255"
+      placeholder="A one-line summary shown in lists.">
+    <span class="form-hint">Max 255 characters. Shown on cards and listings.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="description">Full description</label>
+    <textarea
+      id="description"
+      name="description"
+      rows="8"
+      placeholder="Who should join, requirements, benefits..."><%= tier.description || '' %></textarea>
+    <span class="form-hint">Shown on the tier detail page. Line breaks are preserved.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="icon">Icon</label>
+
+    <div class="icon-picker">
+      <% iconChoices.forEach((ic) => { %>
+        <button
+          type="button"
+          class="icon-choice <%= tier.icon === ic ? 'selected' : '' %>"
+          data-icon="<%= ic %>"
+          onclick="pickIcon('<%= ic %>')"
+          aria-label="Choose icon <%= ic %>">
+          <%= ic %>
+        </button>
+      <% }); %>
+    </div>
+
+    <input
+      type="text"
+      id="icon"
+      name="icon"
+      value="<%= tier.icon || '' %>"
+      maxlength="80"
+      placeholder="Or paste any emoji/character"
+      style="margin-top: 10px;"
+      oninput="updateIconPicker()">
+    <span class="form-hint">Pick from above, or paste your own emoji/character.</span>
+  </div>
+
+  <div class="form-row form-row-split">
+    <div>
+      <label for="fee_amount">Fee amount</label>
+      <input
+        type="number"
+        id="fee_amount"
+        name="fee_amount"
+        value="<%= tier.fee_amount !== undefined && tier.fee_amount !== null ? tier.fee_amount : 0 %>"
+        min="0"
+        step="0.01"
+        inputmode="decimal">
+      <span class="form-hint">Use 0 for free tiers.</span>
+    </div>
+
+    <div>
+      <label for="currency">Currency</label>
+      <select id="currency" name="currency">
+        <% currencies.forEach((c) => { %>
+          <option value="<%= c %>" <%= tier.currency === c ? 'selected' : '' %>><%= c %></option>
+        <% }); %>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label for="sort_order">Display order</label>
+    <input
+      type="number"
+      id="sort_order"
+      name="sort_order"
+      value="<%= tier.sort_order !== undefined && tier.sort_order !== null ? tier.sort_order : 0 %>"
+      min="0"
+      max="9999"
+      inputmode="numeric">
+    <span class="form-hint">Lower numbers appear first (e.g. Student = 1, Associate = 2).</span>
+  </div>
+
+  <div class="form-row">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        name="is_active"
+        value="1"
+        <%= tier.is_active ? 'checked' : '' %>>
+      <span>Active (visible on the public site)</span>
+    </label>
+  </div>
+
+  <div class="settings-actions">
+    <button type="submit" class="btn btn-primary">
+      <%= isEdit ? 'Save Changes' : 'Create Tier' %>
+    </button>
+    <a href="/admin/tiers" class="btn btn-outline">Cancel</a>
+  </div>
+
+</form>
+
+<script>
+  // Auto-suggest slug
+  function suggestSlug() {
+    const nameInput = document.getElementById('name');
+    const slugInput = document.getElementById('slug');
+    const preview = document.getElementById('slugPreview');
+    if (slugInput.value.trim() === '') {
+      const generated = nameInput.value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      preview.textContent = generated || 'auto';
+    }
+  }
+
+  document.getElementById('slug').addEventListener('input', function () {
+    const preview = document.getElementById('slugPreview');
+    const v = this.value.trim();
+    if (v === '') {
+      suggestSlug();
+    } else {
+      preview.textContent = v
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+  });
+
+  // Icon picker
+  function pickIcon(icon) {
+    document.getElementById('icon').value = icon;
+    updateIconPicker();
+  }
+
+  function updateIconPicker() {
+    const current = document.getElementById('icon').value.trim();
+    document.querySelectorAll('.icon-choice').forEach((btn) => {
+      btn.classList.toggle('selected', btn.dataset.icon === current);
+    });
+  }
+</script>

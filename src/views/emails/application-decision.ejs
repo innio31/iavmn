@@ -1,0 +1,174 @@
+<%
+  var siteName = (settings && settings.site_name) || appName || 'IAVMN';
+  var siteShort = (settings && settings.site_short_name) || 'IAVMN';
+  var appUrl = (settings && settings.app_url) || 'http://localhost:3000';
+  var firstName = (application.full_name || '').split(/\s+/)[0] || 'there';
+
+  var isApproved = application.status === 'approved';
+  var isRejected = application.status === 'rejected';
+
+  var headerColor = isApproved ? '#25573f' : (isRejected ? '#721c24' : '#25573f');
+  var badgeLabel = isApproved ? 'Approved' : (isRejected ? 'Not Approved' : application.status);
+  var badgeBg = isApproved ? '#d4edda' : (isRejected ? '#f8d7da' : '#edf3f2');
+  var badgeColor = isApproved ? '#155724' : (isRejected ? '#721c24' : '#25573f');
+  var headline = isApproved
+    ? 'Congratulations — your application has been approved!'
+    : (isRejected
+        ? 'Update on your membership application'
+        : 'Your application status has been updated');
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Application <%= badgeLabel %></title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #edf3f2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #212529; line-height: 1.6;">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #edf3f2; padding: 24px 12px;">
+    <tr>
+      <td align="center">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color: <%= headerColor %>; padding: 28px; text-align: center;">
+              <div style="font-size: 20px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">
+                <%= siteShort %>
+              </div>
+              <div style="font-size: 13px; color: rgba(255, 255, 255, 0.85); margin-top: 4px;">
+                Application Decision
+              </div>
+            </td>
+          </tr>
+
+          <!-- Status badge -->
+          <tr>
+            <td style="padding: 28px 28px 0; text-align: center;">
+              <span style="display: inline-block; padding: 6px 16px; background: <%= badgeBg %>; color: <%= badgeColor %>; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                <%= badgeLabel %>
+              </span>
+            </td>
+          </tr>
+
+          <!-- Headline -->
+          <tr>
+            <td style="padding: 20px 28px 12px; text-align: center;">
+              <h1 style="margin: 0 0 16px; font-size: 22px; color: <%= headerColor %>; line-height: 1.3;">
+                <%= headline %>
+              </h1>
+              <p style="margin: 0; font-size: 15px; line-height: 1.7;">
+                Dear <%= firstName %>, your application for <strong><%= application.tier_name %></strong> membership (reference <strong><%= application.reference %></strong>) has been reviewed.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Admin message -->
+          <% if (application.admin_notes) { %>
+            <tr>
+              <td style="padding: 8px 28px 20px;">
+                <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; margin-bottom: 8px;">Message from the membership team</div>
+                <div style="font-size: 14px; line-height: 1.7; color: #212529; white-space: pre-wrap; padding: 16px 18px; background-color: #f7faf9; border-left: 4px solid #b9a446; border-radius: 6px;">
+                  <%= application.admin_notes %>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+
+          <% if (isApproved) { %>
+            <!-- What's next for approved -->
+            <tr>
+              <td style="padding: 8px 28px 20px;">
+                <h2 style="margin: 0 0 12px; font-size: 16px; color: #25573f;">What happens next?</h2>
+                <ol style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.9; color: #212529;">
+                  <li>Our team will prepare your membership certificate and welcome pack.</li>
+                  <li>You'll receive your official membership details within 5–7 business days.</li>
+                  <li>You'll gain access to member-only events, resources, and networking.</li>
+                </ol>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding: 8px 28px 28px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background-color: #25573f; border-radius: 6px;">
+                      <a href="<%= appUrl %>"
+                         style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none;">
+                        Visit <%= siteShort %>
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          <% } else if (isRejected) { %>
+            <!-- What's next for rejected -->
+            <tr>
+              <td style="padding: 8px 28px 20px;">
+                <h2 style="margin: 0 0 12px; font-size: 16px; color: #25573f;">What you can do next</h2>
+                <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.9; color: #212529;">
+                  <li>Review the message above for any specific feedback.</li>
+                  <li>You're welcome to apply again in the future as your experience grows.</li>
+                  <li>For questions, reply to this email or contact us directly.</li>
+                </ul>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding: 8px 28px 28px;">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="background-color: #25573f; border-radius: 6px;">
+                      <a href="<%= appUrl %>/contact"
+                         style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 700; color: #ffffff; text-decoration: none;">
+                        Contact Us
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          <% } %>
+
+          <!-- Reference reminder -->
+          <tr>
+            <td style="padding: 8px 28px 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7faf9; border-radius: 6px;">
+                <tr>
+                  <td style="padding: 14px 18px; text-align: center;">
+                    <div style="font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Your reference</div>
+                    <div style="font-size: 14px; font-weight: 700; color: #25573f; font-family: monospace;">
+                      <%= application.reference %>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #edf3f2; padding: 20px 28px; border-top: 1px solid #dfeae8;">
+              <p style="margin: 0 0 8px; font-size: 12px; color: #6c757d; line-height: 1.6;">
+                Questions? Reply to this email or contact us at
+                <a href="mailto:<%= (settings && settings.contact_email) || 'info@iavmn.org' %>" style="color: #25573f; text-decoration: none;">
+                  <%= (settings && settings.contact_email) || 'info@iavmn.org' %>
+                </a>
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #6c757d;">
+                &copy; <%= new Date().getFullYear() %> <%= siteName %>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

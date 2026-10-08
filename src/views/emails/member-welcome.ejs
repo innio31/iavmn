@@ -1,0 +1,230 @@
+<%
+  var siteName = (settings && settings.site_name) || appName || 'IAVMN';
+  var siteShort = (settings && settings.site_short_name) || 'IAVMN';
+  var appUrl = (settings && settings.app_url) || 'http://localhost:3000';
+  var firstName = (member.full_name || '').split(/\s+/)[0] || 'there';
+
+  var setPasswordUrl = appUrl.replace(/\/$/, '') + '/member/set-password/' + encodeURIComponent(token);
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to <%= siteShort %></title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #edf3f2; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #212529; line-height: 1.6;">
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #edf3f2; padding: 24px 12px;">
+    <tr>
+      <td align="center">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background-color: #25573f; padding: 32px 28px; text-align: center;">
+              <div style="font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: 0.5px;">
+                <%= siteShort %>
+              </div>
+              <div style="font-size: 13px; color: rgba(255, 255, 255, 0.85); margin-top: 6px;">
+                Membership Approved
+              </div>
+            </td>
+          </tr>
+
+          <!-- Confetti circle -->
+          <tr>
+            <td style="padding: 36px 28px 0; text-align: center;">
+              <div style="display: inline-flex; align-items: center; justify-content: center; width: 76px; height: 76px; border-radius: 50%; background: #d4edda; color: #155724; font-size: 38px; line-height: 1;">
+                🎉
+              </div>
+            </td>
+          </tr>
+
+          <!-- Title -->
+          <tr>
+            <td style="padding: 22px 28px 12px; text-align: center;">
+              <h1 style="margin: 0 0 14px; font-size: 24px; color: #25573f; line-height: 1.3;">
+                Welcome to IAVMN, <%= firstName %>!
+              </h1>
+              <p style="margin: 0; font-size: 15px; line-height: 1.7;">
+                Your membership application has been approved, and you're now an official member of <%= siteName %>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Member number -->
+          <tr>
+            <td style="padding: 20px 28px 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #25573f; border-radius: 10px;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <div style="font-size: 11px; color: rgba(255, 255, 255, 0.85); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+                      Your member number
+                    </div>
+                    <div style="font-size: 22px; font-weight: 700; color: #ffffff; letter-spacing: 1px; font-family: monospace;">
+                      <%= member.member_number %>
+                    </div>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 12px 0 0; font-size: 13px; color: #6c757d; text-align: center; line-height: 1.6;">
+                Save this number — you'll need it for all member correspondence.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Membership details -->
+          <tr>
+            <td style="padding: 20px 28px 8px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f7faf9; border-left: 4px solid #b9a446; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 18px 20px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding: 5px 0; font-size: 13px; color: #6c757d; width: 45%;">Membership grade</td>
+                        <td style="padding: 5px 0; font-size: 14px; color: #25573f; font-weight: 700;"><%= member.tier_name %></td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 5px 0; font-size: 13px; color: #6c757d;">Member since</td>
+                        <td style="padding: 5px 0; font-size: 14px; color: #212529;">
+                          <%= member.joined_at ? new Date(member.joined_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) %>
+                        </td>
+                      </tr>
+                      <% if (member.expires_at) { %>
+                        <tr>
+                          <td style="padding: 5px 0; font-size: 13px; color: #6c757d;">Valid until</td>
+                          <td style="padding: 5px 0; font-size: 14px; color: #212529;">
+                            <%= new Date(member.expires_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) %>
+                          </td>
+                        </tr>
+                      <% } %>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Action: set password -->
+          <tr>
+            <td style="padding: 26px 28px 12px; text-align: center;">
+              <h2 style="margin: 0 0 10px; font-size: 17px; color: #25573f;">
+                One last step — set your password
+              </h2>
+              <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.7; color: #212529;">
+                To access your member portal, please set a password by clicking the button below.
+                The link is valid for <strong>48 hours</strong>.
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                <tr>
+                  <td style="background-color: #25573f; border-radius: 8px;">
+                    <a href="<%= setPasswordUrl %>"
+                       style="display: inline-block; padding: 14px 32px; font-size: 15px; font-weight: 700; color: #ffffff; text-decoration: none; letter-spacing: 0.3px;">
+                      Set My Password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 16px 0 0; font-size: 12px; color: #6c757d; line-height: 1.6;">
+                If the button doesn't work, copy and paste this link into your browser:<br>
+                <a href="<%= setPasswordUrl %>" style="color: #25573f; word-break: break-all; text-decoration: underline;">
+                  <%= setPasswordUrl %>
+                </a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- What you can do -->
+          <tr>
+            <td style="padding: 24px 28px 8px;">
+              <h2 style="margin: 0 0 14px; font-size: 16px; color: #25573f;">
+                What you can do in the member portal
+              </h2>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding: 8px 0; font-size: 14px; line-height: 1.6;">
+                    <span style="display: inline-block; width: 22px; color: #b9a446; font-weight: 700; vertical-align: top;">✓</span>
+                    <span style="display: inline-block; width: calc(100% - 26px); vertical-align: top;">
+                      <strong>Download your certificate</strong> — official, verifiable, and shareable
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-size: 14px; line-height: 1.6;">
+                    <span style="display: inline-block; width: 22px; color: #b9a446; font-weight: 700; vertical-align: top;">✓</span>
+                    <span style="display: inline-block; width: calc(100% - 26px); vertical-align: top;">
+                      <strong>View your payment history</strong> — every transaction on record
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-size: 14px; line-height: 1.6;">
+                    <span style="display: inline-block; width: 22px; color: #b9a446; font-weight: 700; vertical-align: top;">✓</span>
+                    <span style="display: inline-block; width: calc(100% - 26px); vertical-align: top;">
+                      <strong>Keep your profile up to date</strong> — phone, address, employer, qualifications
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-size: 14px; line-height: 1.6;">
+                    <span style="display: inline-block; width: 22px; color: #b9a446; font-weight: 700; vertical-align: top;">✓</span>
+                    <span style="display: inline-block; width: calc(100% - 26px); vertical-align: top;">
+                      <strong>Share a verification link</strong> — anyone can confirm your membership instantly
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Support -->
+          <tr>
+            <td style="padding: 24px 28px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top: 1px solid #dfeae8;">
+                <tr>
+                  <td style="padding-top: 20px;">
+                    <p style="margin: 0 0 8px; font-size: 14px; color: #212529;">
+                      If you have any questions, just reply to this email or reach us at:
+                    </p>
+                    <p style="margin: 0; font-size: 14px;">
+                      <strong>Email:</strong>
+                      <a href="mailto:<%= (settings && settings.contact_email) || 'info@iavmn.org' %>" style="color: #25573f; text-decoration: none;">
+                        <%= (settings && settings.contact_email) || 'info@iavmn.org' %>
+                      </a>
+                    </p>
+                    <% if (settings && settings.contact_phone) { %>
+                      <p style="margin: 4px 0 0; font-size: 14px;">
+                        <strong>Phone:</strong>
+                        <a href="tel:<%= settings.contact_phone.replace(/\s+/g, '') %>" style="color: #25573f; text-decoration: none;">
+                          <%= settings.contact_phone %>
+                        </a>
+                      </p>
+                    <% } %>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #edf3f2; padding: 20px 28px; border-top: 1px solid #dfeae8; text-align: center;">
+              <p style="margin: 0 0 6px; font-size: 12px; color: #6c757d;">
+                You received this email because your membership application was approved.
+              </p>
+              <p style="margin: 0; font-size: 12px; color: #6c757d;">
+                &copy; <%= new Date().getFullYear() %> <%= siteName %>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

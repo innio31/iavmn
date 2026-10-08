@@ -1,0 +1,84 @@
+<%
+  const fmtDate = (dt) => {
+    if (!dt) return '';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+  };
+
+  // Build pagination link helper
+  const pageLink = (n) => (n === 1 ? '/news' : `/news?page=${n}`);
+%>
+
+<section class="page-hero">
+  <div class="container">
+    <h1>News &amp; Updates</h1>
+    <p>Announcements, events, and insights from the Institute of Assets &amp; Value Management Nigeria.</p>
+  </div>
+</section>
+
+<section class="news-section">
+  <div class="container">
+
+    <% if (!posts || posts.length === 0) { %>
+      <div class="empty-public">
+        <p>No posts published yet. Check back soon.</p>
+      </div>
+    <% } else { %>
+
+      <div class="news-grid">
+        <% posts.forEach((p) => { %>
+          <a href="/news/<%= p.slug %>" class="news-card">
+            <div class="news-card-cover">
+              <% if (p.cover_image_path) { %>
+                <img src="<%= p.cover_image_path %>" alt="<%= p.title %>" loading="lazy">
+              <% } else { %>
+                <div class="news-card-cover-placeholder">
+                  <%= (settings && settings.site_short_name) || 'IAVMN' %>
+                </div>
+              <% } %>
+            </div>
+            <div class="news-card-body">
+              <% if (p.published_at) { %>
+                <div class="news-card-date"><%= fmtDate(p.published_at) %></div>
+              <% } %>
+              <h3 class="news-card-title"><%= p.title %></h3>
+              <% if (p.excerpt) { %>
+                <p class="news-card-excerpt"><%= p.excerpt %></p>
+              <% } %>
+              <span class="news-card-link">Read more &rarr;</span>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+
+      <% if (totalPages > 1) { %>
+        <nav class="pagination" aria-label="Pagination">
+          <% if (page > 1) { %>
+            <a href="<%= pageLink(page - 1) %>" class="pagination-btn">&larr; Previous</a>
+          <% } else { %>
+            <span class="pagination-btn disabled">&larr; Previous</span>
+          <% } %>
+
+          <div class="pagination-pages">
+            <% for (let i = 1; i <= totalPages; i++) { %>
+              <% if (i === page) { %>
+                <span class="pagination-page current"><%= i %></span>
+              <% } else { %>
+                <a href="<%= pageLink(i) %>" class="pagination-page"><%= i %></a>
+              <% } %>
+            <% } %>
+          </div>
+
+          <% if (page < totalPages) { %>
+            <a href="<%= pageLink(page + 1) %>" class="pagination-btn">Next &rarr;</a>
+          <% } else { %>
+            <span class="pagination-btn disabled">Next &rarr;</span>
+          <% } %>
+        </nav>
+      <% } %>
+
+    <% } %>
+
+  </div>
+</section>

@@ -1,0 +1,59 @@
+<%
+  // ─── Per-page structured data: FAQPage ───
+  const structuredData = [];
+
+  if (faqs && faqs.length) {
+    const faqSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faqs.map((f) => ({
+        '@type': 'Question',
+        name: f.question,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: (f.answer || '').replace(/\n+/g, ' ').trim(),
+        },
+      })),
+    };
+    structuredData.push(faqSchema);
+  }
+%>
+
+<section class="page-hero">
+  <div class="container">
+    <h1>Frequently Asked Questions</h1>
+    <p>Answers to the questions we hear most often. Can't find what you're looking for? <a href="/contact" style="color: #ffffff; text-decoration: underline;">Contact us</a>.</p>
+  </div>
+</section>
+
+<section class="faq-section">
+  <div class="container container-narrow">
+    <% if (!faqs || faqs.length === 0) { %>
+      <div class="empty-public">
+        <p>No FAQs available right now. Please check back soon.</p>
+      </div>
+    <% } else { %>
+      <div class="faq-list">
+        <% faqs.forEach((f, i) => { %>
+          <details class="faq-item" id="faq-<%= f.id %>" <%= i === 0 ? 'open' : '' %>>
+            <summary class="faq-question">
+              <span class="faq-question-text"><%= f.question %></span>
+              <span class="faq-toggle" aria-hidden="true"></span>
+            </summary>
+            <div class="faq-answer">
+              <% f.answer.split(/\n/).forEach((line) => { %>
+                <% if (line.trim()) { %>
+                  <p><%= line %></p>
+                <% } %>
+              <% }); %>
+            </div>
+          </details>
+        <% }); %>
+      </div>
+
+      <p class="faq-cta">
+        Still have questions? <a href="/contact">Get in touch &rarr;</a>
+      </p>
+    <% } %>
+  </div>
+</section>

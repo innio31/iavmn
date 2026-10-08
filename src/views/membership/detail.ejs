@@ -1,0 +1,82 @@
+<%
+  // Split full description into paragraphs on blank lines
+  const paragraphs = (tier.description || '')
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const hasFee = Number(tier.fee_amount) > 0;
+  const isFree = !hasFee;
+%>
+
+<section class="page-hero">
+  <div class="container">
+    <h1><%= tier.name %></h1>
+    <% if (tier.short_description) { %>
+      <p><%= tier.short_description %></p>
+    <% } %>
+  </div>
+</section>
+
+<section class="tier-detail-section">
+  <div class="container">
+    <p class="profile-back">
+      <a href="/membership">&larr; Back to Membership</a>
+    </p>
+
+    <div class="tier-detail-grid">
+
+      <div class="tier-detail-body">
+        <% if (tier.icon) { %>
+          <div class="tier-detail-icon"><%= tier.icon %></div>
+        <% } %>
+
+        <h2 class="tier-detail-title">About this membership</h2>
+
+        <% if (paragraphs.length) { %>
+          <div class="tier-detail-text">
+            <% paragraphs.forEach((para) => { %>
+              <p><%= para.replace(/\n/g, ' ') %></p>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <p class="text-muted">Full details coming soon.</p>
+        <% } %>
+      </div>
+
+      <aside class="tier-detail-sidebar">
+        <div class="tier-sidebar-card">
+          <h3 class="tier-sidebar-title">Application</h3>
+
+          <div class="tier-sidebar-fee">
+            <% if (isFree) { %>
+              <span class="tier-sidebar-fee-label">Cost</span>
+              <span class="tier-sidebar-fee-value">Free</span>
+            <% } else { %>
+              <span class="tier-sidebar-fee-label">Fee</span>
+              <span class="tier-sidebar-fee-value"><%= tier.currency %> <%= Number(tier.fee_amount).toLocaleString() %></span>
+            <% } %>
+          </div>
+
+          <a href="/membership/<%= tier.slug %>/apply" class="btn btn-primary btn-block">Apply for this tier</a>
+
+          <p class="tier-sidebar-note">
+            You'll be asked to provide your details and upload a CV and passport photo.
+          </p>
+        </div>
+
+        <div class="tier-sidebar-card tier-sidebar-help">
+          <h3 class="tier-sidebar-title">Need help?</h3>
+          <p class="tier-sidebar-text">
+            Not sure if this is the right category?
+            <a href="/contact">Contact us</a> and we'll guide you.
+          </p>
+          <p class="tier-sidebar-text">
+            <a href="/membership">View all membership tiers &rarr;</a>
+          </p>
+        </div>
+      </aside>
+
+    </div>
+  </div>
+</section>

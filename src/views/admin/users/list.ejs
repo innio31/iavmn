@@ -1,0 +1,154 @@
+<%
+  const fmtDate = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const roleLabel = (r) => {
+    if (r === 'super_admin') return 'Super Admin';
+    if (r === 'admin') return 'Admin';
+    if (r === 'editor') return 'Editor';
+    if (r === 'membership_officer') return 'Membership Officer';
+    return r;
+  };
+
+  const roleBadge = (r) => {
+    if (r === 'super_admin') return 'badge-danger';
+    if (r === 'admin') return 'badge-warning';
+    if (r === 'editor') return 'badge-info';
+    if (r === 'membership_officer') return 'badge-success';
+    return 'badge-muted';
+  };
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Admin Users</h1>
+    <p class="page-subtitle">
+      Manage who can access the admin dashboard. Only super admins can see this page.
+      <% if (superAdminCount <= 1) { %>
+        <br><strong style="color: #c0392b;">Warning:</strong> You have only one active super admin. It's recommended to have at least two.
+      <% } %>
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/users/new" class="btn btn-primary">+ New User</a>
+  </div>
+</div>
+
+<% if (!users || users.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No users found.</p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th style="width: 170px;">Role</th>
+          <th style="width: 100px;">Status</th>
+          <th style="width: 140px;">Last login</th>
+          <th style="width: 220px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% users.forEach((u) => { %>
+          <tr>
+            <td>
+              <strong><%= u.name %></strong>
+              <% if (u.id === currentUserId) { %>
+                <span class="badge badge-info" style="margin-left: 6px;">You</span>
+              <% } %>
+            </td>
+            <td>
+              <a href="mailto:<%= u.email %>" style="color: #25573f; word-break: break-all;"><%= u.email %></a>
+            </td>
+            <td>
+              <span class="badge <%= roleBadge(u.role) %>"><%= roleLabel(u.role) %></span>
+            </td>
+            <td>
+              <% if (u.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Disabled</span>
+              <% } %>
+            </td>
+            <td>
+              <span style="font-size: 13px; color: #6c757d;"><%= fmtDate(u.last_login_at) %></span>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/admin/users/<%= u.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+                <% if (u.id !== currentUserId) { %>
+                  <form action="/admin/users/<%= u.id %>/toggle" method="POST" style="display:inline;">
+                    <button type="submit" class="btn btn-sm btn-outline">
+                      <%= u.is_active ? 'Disable' : 'Enable' %>
+                    </button>
+                  </form>
+                  <form action="/admin/users/<%= u.id %>/delete" method="POST" style="display:inline;"
+                        onsubmit="return confirm('Delete this user? This cannot be undone.');">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                  </form>
+                <% } %>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile cards ─── %>
+  <div class="show-mobile">
+    <% users.forEach((u) => { %>
+      <div class="admin-card">
+        <div style="margin-bottom: 12px;">
+          <strong style="display: block; margin-bottom: 4px; word-break: break-word;">
+            <%= u.name %>
+            <% if (u.id === currentUserId) { %>
+              <span class="badge badge-info" style="margin-left: 6px;">You</span>
+            <% } %>
+          </strong>
+          <a href="mailto:<%= u.email %>" style="font-size: 13px; color: #25573f; word-break: break-all; display: block; margin-bottom: 8px;">
+            <%= u.email %>
+          </a>
+          <div class="mobile-card-meta">
+            <span class="badge <%= roleBadge(u.role) %>"><%= roleLabel(u.role) %></span>
+            <% if (u.is_active) { %>
+              <span class="badge badge-success">Active</span>
+            <% } else { %>
+              <span class="badge badge-muted">Disabled</span>
+            <% } %>
+          </div>
+          <div class="mobile-card-meta" style="margin-top: 6px;">
+            <span>Last login: <%= fmtDate(u.last_login_at) %></span>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/admin/users/<%= u.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+          <% if (u.id !== currentUserId) { %>
+            <form action="/admin/users/<%= u.id %>/toggle" method="POST" style="display:inline;">
+              <button type="submit" class="btn btn-sm btn-outline">
+                <%= u.is_active ? 'Disable' : 'Enable' %>
+              </button>
+            </form>
+            <form action="/admin/users/<%= u.id %>/delete" method="POST" style="display:inline;"
+                  onsubmit="return confirm('Delete this user? This cannot be undone.');">
+              <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
+          <% } %>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

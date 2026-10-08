@@ -1,0 +1,223 @@
+<%
+  const firstName = (currentUser && currentUser.name) ? currentUser.name.split(/\s+/)[0] : 'there';
+  const roleLabel = currentUser ? currentUser.role_name.replace(/_/g, ' ') : '';
+
+  const fmtDateTime = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const statusBadge = (s) => {
+    if (s === 'submitted') return 'badge-info';
+    if (s === 'under_review') return 'badge-warning';
+    if (s === 'approved') return 'badge-success';
+    if (s === 'rejected') return 'badge-danger';
+    return 'badge-muted';
+  };
+
+  const statusLabel = (s) => {
+    if (s === 'submitted') return 'Submitted';
+    if (s === 'under_review') return 'Under review';
+    if (s === 'approved') return 'Approved';
+    if (s === 'rejected') return 'Rejected';
+    return s || '—';
+  };
+
+  const paymentLabel = (s) => {
+    if (s === 'paid') return 'Paid';
+    if (s === 'pending') return 'Pending';
+    if (s === 'failed') return 'Failed';
+    if (s === 'refunded') return 'Refunded';
+    return s || '—';
+  };
+
+  const paymentBadge = (s) => {
+    if (s === 'paid') return 'badge-success';
+    if (s === 'pending') return 'badge-warning';
+    if (s === 'failed') return 'badge-danger';
+    return 'badge-muted';
+  };
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Welcome back, <%= firstName %>.</h1>
+    <p class="page-subtitle">
+      You're signed in as <strong><%= roleLabel %></strong>.
+    </p>
+  </div>
+</div>
+
+<%# ─── Stat tiles ─── %>
+<div class="stat-grid">
+
+  <a href="/admin/messages<%= stats.unreadMessages > 0 ? '?filter=unread' : '' %>" class="stat-tile <%= stats.unreadMessages > 0 ? 'stat-tile-alert' : '' %>">
+    <div class="stat-icon">✉</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= stats.unreadMessages %></div>
+      <div class="stat-label">Unread messages</div>
+      <% if (stats.totalMessages > 0) { %>
+        <div class="stat-sub"><%= stats.totalMessages %> total</div>
+      <% } %>
+    </div>
+  </a>
+
+  <a href="/admin/applications<%= stats.applications.submitted > 0 ? '?status=submitted' : '' %>" class="stat-tile <%= stats.applications.submitted > 0 ? 'stat-tile-alert' : '' %>">
+    <div class="stat-icon">✔</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= stats.applications.submitted %></div>
+      <div class="stat-label">Applications to review</div>
+      <% if (stats.applications.total > 0) { %>
+        <div class="stat-sub"><%= stats.applications.total %> total</div>
+      <% } %>
+    </div>
+  </a>
+
+  <a href="/admin/applications?payment=paid" class="stat-tile">
+    <div class="stat-icon">💰</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= stats.applications.paid %></div>
+      <div class="stat-label">Paid applications</div>
+      <div class="stat-sub">
+        <% if (stats.applications.approved > 0) { %>
+          <%= stats.applications.approved %> approved
+        <% } else { %>
+          All-time
+        <% } %>
+      </div>
+    </div>
+  </a>
+
+  <a href="/admin/subscribers" class="stat-tile">
+    <div class="stat-icon">@</div>
+    <div class="stat-body">
+      <div class="stat-value"><%= stats.subscribers %></div>
+      <div class="stat-label">Newsletter subscribers</div>
+      <div class="stat-sub">Active</div>
+    </div>
+  </a>
+
+</div>
+
+<%# ─── Secondary stats row ─── %>
+<div class="stat-grid-secondary">
+  <a href="/admin/posts" class="mini-stat">
+    <span class="mini-stat-value"><%= stats.publishedPosts %></span>
+    <span class="mini-stat-label">Published posts</span>
+    <% if (stats.totalPosts > stats.publishedPosts) { %>
+      <span class="mini-stat-sub">+ <%= stats.totalPosts - stats.publishedPosts %> draft<%= (stats.totalPosts - stats.publishedPosts) === 1 ? '' : 's' %></span>
+    <% } %>
+  </a>
+  <a href="/admin/tiers" class="mini-stat">
+    <span class="mini-stat-value"><%= stats.totalTiers %></span>
+    <span class="mini-stat-label">Active membership tiers</span>
+  </a>
+</div>
+
+<%# ─── Recent activity ─── %>
+<div class="dashboard-activity-grid">
+
+  <%# Recent messages %>
+  <div class="admin-card dashboard-activity-card">
+    <div class="dashboard-activity-head">
+      <h2 class="admin-card-title" style="margin: 0;">Recent messages</h2>
+      <a href="/admin/messages" class="dashboard-activity-link">View all &rarr;</a>
+    </div>
+
+    <% if (!recentMessages || recentMessages.length === 0) { %>
+      <div class="dashboard-empty">
+        No messages yet.
+      </div>
+    <% } else { %>
+      <ul class="activity-list">
+        <% recentMessages.forEach((m) => { %>
+          <li class="activity-item <%= !m.is_read ? 'activity-unread' : '' %>">
+            <a href="/admin/messages/<%= m.id %>" class="activity-link">
+              <div class="activity-head">
+                <strong class="activity-name"><%= m.name %></strong>
+                <% if (!m.is_read) { %>
+                  <span class="unread-dot" aria-label="Unread"></span>
+                <% } %>
+              </div>
+              <div class="activity-preview">
+                <% if (m.subject) { %><span class="activity-subject"><%= m.subject %></span><% } %>
+                <%= m.message.length > 90 ? m.message.slice(0, 90) + '…' : m.message %>
+              </div>
+              <div class="activity-meta"><%= fmtDateTime(m.created_at) %></div>
+            </a>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </div>
+
+  <%# Recent applications %>
+  <div class="admin-card dashboard-activity-card">
+    <div class="dashboard-activity-head">
+      <h2 class="admin-card-title" style="margin: 0;">Recent applications</h2>
+      <a href="/admin/applications" class="dashboard-activity-link">View all &rarr;</a>
+    </div>
+
+    <% if (!recentApplications || recentApplications.length === 0) { %>
+      <div class="dashboard-empty">
+        No applications yet.
+      </div>
+    <% } else { %>
+      <ul class="activity-list">
+        <% recentApplications.forEach((a) => { %>
+          <li class="activity-item <%= a.status === 'submitted' ? 'activity-unread' : '' %>">
+            <a href="/admin/applications/<%= a.id %>" class="activity-link">
+              <div class="activity-head">
+                <strong class="activity-name"><%= a.full_name %></strong>
+                <span class="badge <%= statusBadge(a.status) %> badge-sm"><%= statusLabel(a.status) %></span>
+              </div>
+              <div class="activity-preview">
+                <span class="activity-subject"><%= a.tier_name %></span>
+                <span class="activity-sep">·</span>
+                <span class="badge <%= paymentBadge(a.payment_status) %> badge-sm"><%= paymentLabel(a.payment_status) %></span>
+              </div>
+              <div class="activity-meta">
+                <code class="page-slug-code" style="font-size: 11px;"><%= a.reference %></code>
+                &middot; <%= fmtDateTime(a.created_at) %>
+              </div>
+            </a>
+          </li>
+        <% }); %>
+      </ul>
+    <% } %>
+  </div>
+
+</div>
+
+<%# ─── Quick actions ─── %>
+<div class="admin-card">
+  <h2 class="admin-card-title">Quick actions</h2>
+  <div class="quick-actions-grid">
+    <a href="/admin/posts/new" class="quick-action">
+      <span class="quick-action-icon">✎</span>
+      <span class="quick-action-label">Write a post</span>
+    </a>
+    <a href="/admin/hero/new" class="quick-action">
+      <span class="quick-action-icon">▤</span>
+      <span class="quick-action-label">Add hero slide</span>
+    </a>
+    <a href="/admin/tiers/new" class="quick-action">
+      <span class="quick-action-icon">★</span>
+      <span class="quick-action-label">Add tier</span>
+    </a>
+    <a href="/admin/council/new" class="quick-action">
+      <span class="quick-action-icon">☺</span>
+      <span class="quick-action-label">Add council member</span>
+    </a>
+    <a href="/admin/faqs/new" class="quick-action">
+      <span class="quick-action-icon">?</span>
+      <span class="quick-action-label">Add FAQ</span>
+    </a>
+    <a href="/admin/settings" class="quick-action">
+      <span class="quick-action-icon">⚙</span>
+      <span class="quick-action-label">Edit settings</span>
+    </a>
+  </div>
+</div>

@@ -1,0 +1,249 @@
+<%
+  const hasQuery = results.term && results.term.length > 0;
+  const hasResults = results.totalCount > 0;
+
+  const fmtDate = (dt) => {
+    if (!dt) return '';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  // Escape helper passed from the controller; falls back if missing
+  const esc = (typeof escapeHtml === 'function') ? escapeHtml : (s) => String(s || '');
+
+  // Total count per section for the tab row
+  const counts = {
+    posts: results.posts.length,
+    pages: results.pages.length,
+    council: results.council.length,
+    faqs: results.faqs.length,
+    tiers: results.tiers.length,
+  };
+%>
+
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Search</h1>
+    <p>Find news, pages, FAQs, council members, and membership options.</p>
+
+    <form action="/search" method="GET" class="search-hero-form" role="search">
+      <div class="search-hero-row">
+        <input
+          type="search"
+          name="q"
+          value="<%= rawQuery %>"
+          placeholder="Search the site…"
+          maxlength="100"
+          autocomplete="off"
+          spellcheck="false"
+          autofocus>
+        <button type="submit" class="btn btn-secondary">Search</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="search-section">
+  <div class="container">
+
+    <%# ─── No query yet ─── %>
+    <% if (!hasQuery) { %>
+
+      <div class="search-empty">
+        <div class="search-empty-icon">🔎</div>
+        <h2 class="search-empty-title">Start typing to search</h2>
+        <p class="search-empty-text">
+          Enter a keyword above — try "membership", "conference", "fellow", or a council member's name.
+        </p>
+
+        <div class="search-suggestions">
+          <p class="search-suggestions-title">Popular searches</p>
+          <div class="search-suggestion-chips">
+            <a href="/search?q=membership" class="search-chip">Membership</a>
+            <a href="/search?q=fellow" class="search-chip">Fellow</a>
+            <a href="/search?q=conference" class="search-chip">Conference</a>
+            <a href="/search?q=contact" class="search-chip">Contact</a>
+            <a href="/search?q=certification" class="search-chip">Certification</a>
+          </div>
+        </div>
+      </div>
+
+    <%# ─── No results ─── %>
+    <% } else if (!hasResults) { %>
+
+      <div class="search-empty">
+        <div class="search-empty-icon">😶</div>
+        <h2 class="search-empty-title">No results for "<%= rawQuery %>"</h2>
+        <p class="search-empty-text">
+          We couldn't find anything matching your search. Try a different word or a broader term.
+        </p>
+
+        <div class="search-tips">
+          <p><strong>Search tips:</strong></p>
+          <ul>
+            <li>Check your spelling</li>
+            <li>Try fewer words (e.g., "student" instead of "student membership application")</li>
+            <li>Use a general term like "membership" or "news"</li>
+          </ul>
+        </div>
+
+        <p class="search-empty-actions">
+          <a href="/" class="btn btn-outline">Back to Home</a>
+          <a href="/contact" class="btn btn-outline">Contact Us</a>
+        </p>
+      </div>
+
+    <%# ─── Results ─── %>
+    <% } else { %>
+
+      <div class="search-summary">
+        <p class="search-summary-text">
+          Found <strong><%= results.totalCount %></strong> result<%= results.totalCount === 1 ? '' : 's' %>
+          for "<strong><%= rawQuery %></strong>"
+        </p>
+      </div>
+
+      <%# ─── News posts ─── %>
+      <% if (counts.posts > 0) { %>
+        <div class="search-group">
+          <h2 class="search-group-title">
+            <span class="search-group-icon">✎</span>
+            News &amp; Updates
+            <span class="search-group-count"><%= counts.posts %></span>
+          </h2>
+          <div class="search-results-list">
+            <% results.posts.forEach((p) => { %>
+              <a href="<%= p.url %>" class="search-result">
+                <% if (p.cover_image_path) { %>
+                  <div class="search-result-thumb">
+                    <img src="<%= p.cover_image_path %>" alt="" loading="lazy">
+                  </div>
+                <% } %>
+                <div class="search-result-body">
+                  <div class="search-result-title"><%= p.title %></div>
+                  <div class="search-result-snippet"><%= p.snippet %></div>
+                  <% if (p.published_at) { %>
+                    <div class="search-result-meta"><%= fmtDate(p.published_at) %></div>
+                  <% } %>
+                </div>
+              </a>
+            <% }); %>
+          </div>
+        </div>
+      <% } %>
+
+      <%# ─── Pages ─── %>
+      <% if (counts.pages > 0) { %>
+        <div class="search-group">
+          <h2 class="search-group-title">
+            <span class="search-group-icon">▦</span>
+            Pages
+            <span class="search-group-count"><%= counts.pages %></span>
+          </h2>
+          <div class="search-results-list">
+            <% results.pages.forEach((p) => { %>
+              <a href="<%= p.url %>" class="search-result">
+                <div class="search-result-body">
+                  <div class="search-result-title"><%= p.title %></div>
+                  <div class="search-result-snippet"><%= p.snippet %></div>
+                </div>
+              </a>
+            <% }); %>
+          </div>
+        </div>
+      <% } %>
+
+      <%# ─── Council members ─── %>
+      <% if (counts.council > 0) { %>
+        <div class="search-group">
+          <h2 class="search-group-title">
+            <span class="search-group-icon">☺</span>
+            Council Members
+            <span class="search-group-count"><%= counts.council %></span>
+          </h2>
+          <div class="search-results-list">
+            <% results.council.forEach((c) => { %>
+              <a href="<%= c.url %>" class="search-result">
+                <% if (c.photo_path) { %>
+                  <div class="search-result-thumb search-result-thumb-round">
+                    <img src="<%= c.photo_path %>" alt="" loading="lazy">
+                  </div>
+                <% } %>
+                <div class="search-result-body">
+                  <div class="search-result-title"><%= c.full_name %></div>
+                  <% if (c.job_title) { %>
+                    <div class="search-result-subtitle"><%= c.job_title %></div>
+                  <% } %>
+                  <% if (c.snippet) { %>
+                    <div class="search-result-snippet"><%= c.snippet %></div>
+                  <% } %>
+                </div>
+              </a>
+            <% }); %>
+          </div>
+        </div>
+      <% } %>
+
+      <%# ─── FAQs ─── %>
+      <% if (counts.faqs > 0) { %>
+        <div class="search-group">
+          <h2 class="search-group-title">
+            <span class="search-group-icon">?</span>
+            FAQs
+            <span class="search-group-count"><%= counts.faqs %></span>
+          </h2>
+          <div class="search-results-list">
+            <% results.faqs.forEach((f) => { %>
+              <a href="<%= f.url %>" class="search-result">
+                <div class="search-result-body">
+                  <div class="search-result-title"><%= f.question %></div>
+                  <div class="search-result-snippet"><%= f.snippet %></div>
+                </div>
+              </a>
+            <% }); %>
+          </div>
+        </div>
+      <% } %>
+
+      <%# ─── Membership tiers ─── %>
+      <% if (counts.tiers > 0) { %>
+        <div class="search-group">
+          <h2 class="search-group-title">
+            <span class="search-group-icon">★</span>
+            Membership Tiers
+            <span class="search-group-count"><%= counts.tiers %></span>
+          </h2>
+          <div class="search-results-list">
+            <% results.tiers.forEach((t) => { %>
+              <a href="<%= t.url %>" class="search-result">
+                <div class="search-result-thumb search-result-thumb-icon">
+                  <%= t.icon || '★' %>
+                </div>
+                <div class="search-result-body">
+                  <div class="search-result-title"><%= t.name %></div>
+                  <% if (t.snippet) { %>
+                    <div class="search-result-snippet"><%= t.snippet %></div>
+                  <% } %>
+                  <% if (Number(t.fee_amount) > 0) { %>
+                    <div class="search-result-meta">
+                      <%= t.currency %> <%= Number(t.fee_amount).toLocaleString() %>
+                    </div>
+                  <% } else { %>
+                    <div class="search-result-meta">Free to apply</div>
+                  <% } %>
+                </div>
+              </a>
+            <% }); %>
+          </div>
+        </div>
+      <% } %>
+
+      <p class="search-footer-note">
+        Not finding what you need? <a href="/contact">Contact us</a> and we'll point you in the right direction.
+      </p>
+
+    <% } %>
+
+  </div>
+</section>

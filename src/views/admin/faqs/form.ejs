@@ -1,0 +1,87 @@
+<%
+  const isEdit = mode === 'edit';
+  const action = isEdit ? `/admin/faqs/${faq.id}` : '/admin/faqs';
+  const pageTitle = isEdit ? 'Edit FAQ' : 'New FAQ';
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><%= pageTitle %></h1>
+    <p class="page-subtitle">
+      <a href="/admin/faqs">&larr; Back to FAQs</a>
+    </p>
+  </div>
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="admin-card" style="border-color: #f5c6cb; background: #f8d7da; color: #721c24;">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 8px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<form action="<%= action %>" method="POST" class="admin-card" novalidate>
+
+  <div class="form-row">
+    <label for="question">Question <span style="color: #c0392b;">*</span></label>
+    <input
+      type="text"
+      id="question"
+      name="question"
+      value="<%= faq.question || '' %>"
+      required
+      minlength="3"
+      maxlength="300"
+      placeholder="e.g. How do I apply for membership?"
+      autofocus>
+    <span class="form-hint">Max 300 characters.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="answer">Answer <span style="color: #c0392b;">*</span></label>
+    <textarea
+      id="answer"
+      name="answer"
+      rows="8"
+      required
+      minlength="3"
+      placeholder="Provide a clear, helpful answer."><%= faq.answer || '' %></textarea>
+    <span class="form-hint">Line breaks are preserved on the public page.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="sort_order">Display order</label>
+    <input
+      type="number"
+      id="sort_order"
+      name="sort_order"
+      value="<%= faq.sort_order !== undefined && faq.sort_order !== null ? faq.sort_order : 0 %>"
+      min="0"
+      max="9999"
+      inputmode="numeric">
+    <span class="form-hint">Lower numbers appear first.</span>
+  </div>
+
+  <div class="form-row">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        name="is_active"
+        value="1"
+        <%= faq.is_active ? 'checked' : '' %>>
+      <span>Active (visible on the public site)</span>
+    </label>
+  </div>
+
+  <div class="settings-actions">
+    <button type="submit" class="btn btn-primary">
+      <%= isEdit ? 'Save Changes' : 'Create FAQ' %>
+    </button>
+    <a href="/admin/faqs" class="btn btn-outline">Cancel</a>
+  </div>
+
+</form>

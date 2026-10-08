@@ -1,0 +1,242 @@
+<%
+  const isEdit = mode === 'edit';
+  const action = isEdit ? `/admin/pages/${page.id}` : '/admin/pages';
+  const pageTitle = isEdit ? 'Edit Page' : 'New Page';
+
+  const suggestedSlug = (page.title || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+  const reservedSlugs = ['contact', 'membership', 'faq', 'council-members'];
+  const isReserved = isEdit && reservedSlugs.includes(page.slug);
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><%= pageTitle %></h1>
+    <p class="page-subtitle">
+      <a href="/admin/pages">&larr; Back to Pages</a>
+    </p>
+  </div>
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="admin-card" style="border-color: #f5c6cb; background: #f8d7da; color: #721c24;">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 8px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<% if (isReserved) { %>
+  <div class="admin-card" style="border-color: #ffeeba; background: #fff3cd; color: #856404;">
+    <strong>Note:</strong> <code><%= page.slug %></code> is a reserved route. You can edit this page's content, but you cannot change its URL or delete it.
+  </div>
+<% } %>
+
+<form action="<%= action %>" method="POST" class="admin-card" novalidate>
+
+  <div class="form-row">
+    <label for="title">Title <span style="color: #c0392b;">*</span></label>
+    <input
+      type="text"
+      id="title"
+      name="title"
+      value="<%= page.title || '' %>"
+      required
+      minlength="2"
+      maxlength="200"
+      placeholder="e.g. About Us"
+      autofocus
+      oninput="suggestSlug()">
+    <span class="form-hint">Shown as the page heading and browser tab title.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="slug">URL slug</label>
+    <input
+      type="text"
+      id="slug"
+      name="slug"
+      value="<%= page.slug || '' %>"
+      maxlength="120"
+      pattern="[a-z0-9-]+"
+      placeholder="<%= suggestedSlug || 'auto-generated-from-title' %>"
+      <%= isReserved ? 'readonly' : '' %>>
+    <span class="form-hint">
+      <% if (isReserved) { %>
+        This URL is reserved and cannot be changed.
+      <% } else { %>
+        Leave blank to auto-generate from the title.
+        Page will be at <code>/<span id="slugPreview"><%= page.slug || suggestedSlug || 'auto' %></span></code>.
+      <% } %>
+    </span>
+  </div>
+
+  <div class="form-row">
+    <label for="content">Content</label>
+    <textarea
+      id="content"
+      name="content"
+      rows="16"
+      placeholder="Page content. Line breaks are preserved."><%= page.content || '' %></textarea>
+    <span class="form-hint">
+      Plain text with line breaks. Blank lines create paragraph breaks.
+      Short lines ending without a period become subheadings.
+    </span>
+  </div>
+
+  <hr class="admin-divider">
+
+  <h3 class="admin-section-heading">Search engine optimization (SEO)</h3>
+
+  <div class="form-row">
+    <label for="meta_title">Meta title</label>
+    <input
+      type="text"
+      id="meta_title"
+      name="meta_title"
+      value="<%= page.meta_title || '' %>"
+      maxlength="200"
+      placeholder="Optional. Defaults to the page title.">
+    <span class="form-hint">Shown in search results. Recommended: 50–60 characters.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="meta_description">Meta description</label>
+    <textarea
+      id="meta_description"
+      name="meta_description"
+      rows="3"
+      maxlength="320"
+      placeholder="Optional. A one-sentence summary for search engines."><%= page.meta_description || '' %></textarea>
+    <span class="form-hint">
+      Recommended: 120–160 characters.
+      <span id="metaCount" style="float: right;">
+        <%= (page.meta_description || '').length %> / 320
+      </span>
+    </span>
+  </div>
+
+  <hr class="admin-divider">
+
+  <h3 class="admin-section-heading">Visibility</h3>
+
+  <div class="form-row">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        name="is_published"
+        value="1"
+        <%= page.is_published ? 'checked' : '' %>>
+      <span>Published (visible on the public site)</span>
+    </label>
+  </div>
+
+  <div class="form-row">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        name="show_in_menu"
+        value="1"
+        onchange="toggleMenuFields()"
+        <%= page.show_in_menu ? 'checked' : '' %>>
+      <span>Show in main menu</span>
+    </label>
+    <span class="form-hint">
+      When checked, a link to this page appears in the site's top navigation (unless it duplicates a built-in route).
+    </span>
+  </div>
+
+  <div id="menuFields" style="<%= page.show_in_menu ? '' : 'display: none;' %>">
+    <div class="form-row form-row-split">
+      <div>
+        <label for="menu_label">Menu label (optional)</label>
+        <input
+          type="text"
+          id="menu_label"
+          name="menu_label"
+          value="<%= page.menu_label || '' %>"
+          maxlength="60"
+          placeholder="Defaults to the page title">
+        <span class="form-hint">Use a shorter label if the title is long.</span>
+      </div>
+      <div>
+        <label for="menu_order">Menu order</label>
+        <input
+          type="number"
+          id="menu_order"
+          name="menu_order"
+          value="<%= page.menu_order !== undefined && page.menu_order !== null ? page.menu_order : 0 %>"
+          min="0"
+          max="9999"
+          inputmode="numeric">
+        <span class="form-hint">Lower = earlier in menu.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-actions">
+    <button type="submit" class="btn btn-primary">
+      <%= isEdit ? 'Save Changes' : 'Create Page' %>
+    </button>
+    <a href="/admin/pages" class="btn btn-outline">Cancel</a>
+  </div>
+
+</form>
+
+<script>
+  function suggestSlug() {
+    var slugInput = document.getElementById('slug');
+    if (!slugInput || slugInput.hasAttribute('readonly')) return;
+
+    var titleInput = document.getElementById('title');
+    var preview = document.getElementById('slugPreview');
+
+    if (slugInput.value.trim() === '') {
+      var generated = titleInput.value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      preview.textContent = generated || 'auto';
+    }
+  }
+
+  (function () {
+    var slugInput = document.getElementById('slug');
+    var preview = document.getElementById('slugPreview');
+    if (slugInput && preview && !slugInput.hasAttribute('readonly')) {
+      slugInput.addEventListener('input', function () {
+        var v = this.value.trim();
+        if (v === '') {
+          suggestSlug();
+        } else {
+          preview.textContent = v
+            .toLowerCase()
+            .replace(/[^a-z0-9-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        }
+      });
+    }
+  })();
+
+  (function () {
+    var meta = document.getElementById('meta_description');
+    var counter = document.getElementById('metaCount');
+    if (!meta || !counter) return;
+    function update() { counter.textContent = meta.value.length + ' / 320'; }
+    meta.addEventListener('input', update);
+    update();
+  })();
+
+  function toggleMenuFields() {
+    var cb = document.querySelector('input[name="show_in_menu"]');
+    var wrap = document.getElementById('menuFields');
+    if (!cb || !wrap) return;
+    wrap.style.display = cb.checked ? 'block' : 'none';
+  }
+</script>

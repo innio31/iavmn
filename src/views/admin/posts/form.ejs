@@ -1,0 +1,222 @@
+<%
+  const isEdit = mode === 'edit';
+  const action = isEdit ? `/admin/posts/${post.id}` : '/admin/posts';
+  const pageTitle = isEdit ? 'Edit Post' : 'New Post';
+  const hasExistingCover = isEdit && post.cover_image_path;
+
+  const suggestedSlug = (post.title || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><%= pageTitle %></h1>
+    <p class="page-subtitle">
+      <a href="/admin/posts">&larr; Back to Posts</a>
+    </p>
+  </div>
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="admin-card" style="border-color: #f5c6cb; background: #f8d7da; color: #721c24;">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 8px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<form action="<%= action %>" method="POST" enctype="multipart/form-data" class="admin-card" novalidate>
+
+  <div class="form-row">
+    <label for="title">Title <span style="color: #c0392b;">*</span></label>
+    <input
+      type="text"
+      id="title"
+      name="title"
+      value="<%= post.title || '' %>"
+      required
+      minlength="2"
+      maxlength="250"
+      placeholder="e.g. IAVMN Holds 2026 Annual Conference"
+      autofocus
+      oninput="suggestSlug()">
+  </div>
+
+  <div class="form-row">
+    <label for="slug">URL slug</label>
+    <input
+      type="text"
+      id="slug"
+      name="slug"
+      value="<%= post.slug || '' %>"
+      maxlength="200"
+      pattern="[a-z0-9-]+"
+      placeholder="<%= suggestedSlug || 'auto-generated-from-title' %>">
+    <span class="form-hint">
+      Leave blank to auto-generate from the title.
+      Article will be at <code>/news/<span id="slugPreview"><%= post.slug || suggestedSlug || 'auto' %></span></code>.
+    </span>
+  </div>
+
+  <div class="form-row">
+    <label for="excerpt">Excerpt (short summary)</label>
+    <textarea
+      id="excerpt"
+      name="excerpt"
+      rows="3"
+      maxlength="400"
+      placeholder="A one or two sentence summary shown in listings."><%= post.excerpt || '' %></textarea>
+    <span class="form-hint">
+      Max 400 characters. Shown on the news list and social previews.
+      <span id="excerptCount" style="float: right;">
+        <%= (post.excerpt || '').length %> / 400
+      </span>
+    </span>
+  </div>
+
+  <div class="form-row">
+    <label for="body">Body</label>
+    <textarea
+      id="body"
+      name="body"
+      rows="20"
+      placeholder="Write the full article. Separate paragraphs with blank lines."><%= post.body || '' %></textarea>
+    <span class="form-hint">
+      Plain text with line breaks. Blank lines create paragraph breaks.
+      Short lines without trailing punctuation become subheadings.
+    </span>
+  </div>
+
+  <div class="form-row">
+    <label for="cover">Cover image</label>
+
+    <% if (hasExistingCover) { %>
+      <div class="current-image-block">
+        <span class="form-hint" style="margin-bottom: 8px;">Current cover:</span>
+        <div class="image-preview-container">
+          <img src="<%= post.cover_image_path %>" alt="Current cover" class="image-preview">
+        </div>
+        <span class="form-hint">Choose a new file below to replace it. Otherwise, the current cover stays.</span>
+      </div>
+    <% } %>
+
+    <input
+      type="file"
+      id="cover"
+      name="cover"
+      accept="image/png,image/jpeg,image/webp,image/gif"
+      onchange="previewCover(event)">
+
+    <span class="form-hint">
+      JPG, PNG, WEBP, or GIF. Max 5 MB. Recommended: <strong>1600 × 900</strong> pixels (16:9 landscape).
+    </span>
+
+    <div class="image-preview-container" id="newPreviewWrap" style="display: none; margin-top: 10px;">
+      <span class="form-hint">New cover preview:</span>
+      <img src="" alt="New cover preview" class="image-preview" id="newPreview">
+    </div>
+  </div>
+
+  <hr class="admin-divider">
+
+  <h3 class="admin-section-heading">Publishing</h3>
+
+  <div class="form-row">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        name="is_published"
+        value="1"
+        <%= post.is_published ? 'checked' : '' %>>
+      <span>Published (visible on the public site)</span>
+    </label>
+    <span class="form-hint">
+      When unchecked, the post is saved as a draft and only visible to admins.
+    </span>
+  </div>
+
+  <div class="form-row">
+    <label for="published_at">Publish date &amp; time</label>
+    <input
+      type="datetime-local"
+      id="published_at"
+      name="published_at"
+      value="<%= publishedAtInput || '' %>">
+    <span class="form-hint">
+      Leave blank to use the current time when publishing. You can schedule future posts by setting a future date — the post will only appear once published.
+    </span>
+  </div>
+
+  <div class="settings-actions">
+    <button type="submit" class="btn btn-primary">
+      <%= isEdit ? 'Save Changes' : 'Create Post' %>
+    </button>
+    <a href="/admin/posts" class="btn btn-outline">Cancel</a>
+  </div>
+
+</form>
+
+<script>
+  function suggestSlug() {
+    var slugInput = document.getElementById('slug');
+    if (!slugInput) return;
+    var titleInput = document.getElementById('title');
+    var preview = document.getElementById('slugPreview');
+    if (slugInput.value.trim() === '') {
+      var generated = titleInput.value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      preview.textContent = generated || 'auto';
+    }
+  }
+
+  (function () {
+    var slugInput = document.getElementById('slug');
+    var preview = document.getElementById('slugPreview');
+    if (slugInput && preview) {
+      slugInput.addEventListener('input', function () {
+        var v = this.value.trim();
+        if (v === '') {
+          suggestSlug();
+        } else {
+          preview.textContent = v
+            .toLowerCase()
+            .replace(/[^a-z0-9-]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        }
+      });
+    }
+  })();
+
+  (function () {
+    var excerpt = document.getElementById('excerpt');
+    var counter = document.getElementById('excerptCount');
+    if (!excerpt || !counter) return;
+    function update() { counter.textContent = excerpt.value.length + ' / 400'; }
+    excerpt.addEventListener('input', update);
+    update();
+  })();
+
+  function previewCover(event) {
+    var input = event.target;
+    var wrap = document.getElementById('newPreviewWrap');
+    var img = document.getElementById('newPreview');
+    if (input.files && input.files[0]) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        img.src = e.target.result;
+        wrap.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      img.src = '';
+      wrap.style.display = 'none';
+    }
+  }
+</script>

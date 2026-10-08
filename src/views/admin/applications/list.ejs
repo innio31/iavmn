@@ -1,0 +1,209 @@
+<%
+  const fmtDate = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  const fmtDateTime = (dt) => {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  };
+
+  const statusBadge = (s) => {
+    if (s === 'submitted') return 'badge-info';
+    if (s === 'under_review') return 'badge-warning';
+    if (s === 'approved') return 'badge-success';
+    if (s === 'rejected') return 'badge-danger';
+    return 'badge-muted';
+  };
+
+  const statusLabel = (s) => {
+    if (s === 'submitted') return 'Submitted';
+    if (s === 'under_review') return 'Under review';
+    if (s === 'approved') return 'Approved';
+    if (s === 'rejected') return 'Rejected';
+    return s || '—';
+  };
+
+  const paymentBadge = (s) => {
+    if (s === 'paid') return 'badge-success';
+    if (s === 'pending') return 'badge-warning';
+    if (s === 'failed') return 'badge-danger';
+    if (s === 'refunded') return 'badge-muted';
+    return 'badge-muted';
+  };
+
+  const paymentLabel = (s) => {
+    if (s === 'paid') return 'Paid';
+    if (s === 'pending') return 'Pending';
+    if (s === 'failed') return 'Failed';
+    if (s === 'refunded') return 'Refunded';
+    return s || '—';
+  };
+
+  // Build filter URLs
+  const buildUrl = (opts = {}) => {
+    const params = new URLSearchParams();
+    const s = opts.status !== undefined ? opts.status : statusFilter;
+    const p = opts.payment !== undefined ? opts.payment : paymentFilter;
+    if (s) params.set('status', s);
+    if (p) params.set('payment', p);
+    const qs = params.toString();
+    return '/admin/applications' + (qs ? '?' + qs : '');
+  };
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Membership Applications</h1>
+    <p class="page-subtitle">
+      <%= counts.total %> total
+      <% if (counts.submitted > 0) { %>
+        &middot; <strong style="color: #0c5460;"><%= counts.submitted %> awaiting review</strong>
+      <% } %>
+    </p>
+  </div>
+</div>
+
+<%# ─── Status filter tabs ─── %>
+<nav class="filter-tabs">
+  <a href="<%= buildUrl({ status: null }) %>" class="filter-tab <%= !statusFilter ? 'active' : '' %>">
+    All <span class="filter-tab-count"><%= counts.total %></span>
+  </a>
+  <a href="<%= buildUrl({ status: 'submitted' }) %>" class="filter-tab <%= statusFilter === 'submitted' ? 'active' : '' %>">
+    Submitted <% if (counts.submitted > 0) { %><span class="filter-tab-count filter-tab-count-info"><%= counts.submitted %></span><% } %>
+  </a>
+  <a href="<%= buildUrl({ status: 'under_review' }) %>" class="filter-tab <%= statusFilter === 'under_review' ? 'active' : '' %>">
+    Under review <% if (counts.under_review > 0) { %><span class="filter-tab-count"><%= counts.under_review %></span><% } %>
+  </a>
+  <a href="<%= buildUrl({ status: 'approved' }) %>" class="filter-tab <%= statusFilter === 'approved' ? 'active' : '' %>">
+    Approved <% if (counts.approved > 0) { %><span class="filter-tab-count"><%= counts.approved %></span><% } %>
+  </a>
+  <a href="<%= buildUrl({ status: 'rejected' }) %>" class="filter-tab <%= statusFilter === 'rejected' ? 'active' : '' %>">
+    Rejected <% if (counts.rejected > 0) { %><span class="filter-tab-count"><%= counts.rejected %></span><% } %>
+  </a>
+</nav>
+
+<%# ─── Payment filter ─── %>
+<nav class="filter-tabs filter-tabs-secondary">
+  <a href="<%= buildUrl({ payment: null }) %>" class="filter-tab filter-tab-sm <%= !paymentFilter ? 'active' : '' %>">
+    Any payment
+  </a>
+  <a href="<%= buildUrl({ payment: 'pending' }) %>" class="filter-tab filter-tab-sm <%= paymentFilter === 'pending' ? 'active' : '' %>">
+    Pending
+  </a>
+  <a href="<%= buildUrl({ payment: 'paid' }) %>" class="filter-tab filter-tab-sm <%= paymentFilter === 'paid' ? 'active' : '' %>">
+    Paid
+  </a>
+</nav>
+
+<% if (!applications || applications.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>
+        <% if (statusFilter || paymentFilter) { %>
+          No applications match the current filter.
+        <% } else { %>
+          No applications yet.
+        <% } %>
+      </p>
+      <p class="text-muted" style="font-size: 14px;">
+        Applications submitted through the public membership form will appear here.
+      </p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width: 130px;">Reference</th>
+          <th>Applicant</th>
+          <th style="width: 160px;">Tier</th>
+          <th style="width: 110px;">Payment</th>
+          <th style="width: 130px;">Status</th>
+          <th style="width: 120px;">Received</th>
+          <th style="width: 110px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% applications.forEach((a) => { %>
+          <tr class="<%= a.status === 'submitted' ? 'row-unread' : '' %>">
+            <td>
+              <code class="page-slug-code"><%= a.reference %></code>
+            </td>
+            <td>
+              <strong><%= a.full_name %></strong>
+              <br><a href="mailto:<%= a.email %>" style="font-size: 13px; color: #25573f;"><%= a.email %></a>
+              <% if (a.phone) { %>
+                <br><span class="text-muted" style="font-size: 12px;"><%= a.phone %></span>
+              <% } %>
+            </td>
+            <td>
+              <span style="font-size: 13px;"><%= a.tier_name || '—' %></span>
+            </td>
+            <td>
+              <span class="badge <%= paymentBadge(a.payment_status) %>"><%= paymentLabel(a.payment_status) %></span>
+              <% if (a.payment_amount) { %>
+                <br><span class="text-muted" style="font-size: 12px;"><%= a.payment_currency || a.tier_currency || 'NGN' %> <%= Number(a.payment_amount).toLocaleString() %></span>
+              <% } %>
+            </td>
+            <td>
+              <span class="badge <%= statusBadge(a.status) %>"><%= statusLabel(a.status) %></span>
+            </td>
+            <td>
+              <span style="font-size: 13px; color: #6c757d;"><%= fmtDate(a.created_at) %></span>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/admin/applications/<%= a.id %>" class="btn btn-sm btn-outline">View</a>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile cards ─── %>
+  <div class="show-mobile">
+    <% applications.forEach((a) => { %>
+      <div class="admin-card <%= a.status === 'submitted' ? 'card-unread' : '' %>">
+        <div style="margin-bottom: 12px;">
+          <code class="page-slug-code" style="margin-bottom: 8px;"><%= a.reference %></code>
+          <strong style="display: block; margin: 8px 0 4px; word-break: break-word;"><%= a.full_name %></strong>
+          <a href="mailto:<%= a.email %>" style="font-size: 13px; color: #25573f; word-break: break-all; display: block; margin-bottom: 4px;">
+            <%= a.email %>
+          </a>
+          <% if (a.phone) { %>
+            <div class="text-muted" style="font-size: 12px; margin-bottom: 10px;"><%= a.phone %></div>
+          <% } %>
+
+          <div style="font-size: 13px; margin-bottom: 10px;">
+            <strong style="color: #6c757d; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Tier:</strong>
+            <%= a.tier_name || '—' %>
+          </div>
+
+          <div class="mobile-card-meta">
+            <span class="badge <%= paymentBadge(a.payment_status) %>"><%= paymentLabel(a.payment_status) %></span>
+            <span class="badge <%= statusBadge(a.status) %>"><%= statusLabel(a.status) %></span>
+          </div>
+          <div class="mobile-card-meta" style="margin-top: 6px;">
+            <span><%= fmtDate(a.created_at) %></span>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/admin/applications/<%= a.id %>" class="btn btn-sm btn-primary">View Details</a>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

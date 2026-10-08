@@ -1,0 +1,125 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Council Members</h1>
+    <p class="page-subtitle">
+      Manage council member profiles. The <strong>Order</strong> column controls display order (lower = first).
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/council/new" class="btn btn-primary">+ New Member</a>
+  </div>
+</div>
+
+<% if (!members || members.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No council members yet.</p>
+      <p><a href="/admin/council/new" class="btn btn-primary">Add your first member</a></p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop / tablet: table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width: 80px;">Photo</th>
+          <th>Name &amp; Title</th>
+          <th style="width: 70px;">Order</th>
+          <th style="width: 100px;">Status</th>
+          <th style="width: 220px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% members.forEach((m) => { %>
+          <tr>
+            <td>
+              <% if (m.photo_path) { %>
+                <img src="<%= m.photo_path %>" alt="" class="council-thumb">
+              <% } else { %>
+                <span class="text-muted">—</span>
+              <% } %>
+            </td>
+            <td>
+              <strong><%= m.full_name %></strong>
+              <% if (m.job_title) { %>
+                <br><span class="text-muted" style="font-size: 13px;"><%= m.job_title %></span>
+              <% } %>
+              <br><span class="text-muted" style="font-size: 12px;">/council-members/<%= m.slug %></span>
+            </td>
+            <td><%= m.sort_order %></td>
+            <td>
+              <% if (m.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Hidden</span>
+              <% } %>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/council-members/<%= m.slug %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+                <a href="/admin/council/<%= m.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+                <form action="/admin/council/<%= m.id %>/toggle" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-outline">
+                    <%= m.is_active ? 'Hide' : 'Show' %>
+                  </button>
+                </form>
+
+                <form action="/admin/council/<%= m.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Delete this council member? This will also remove their photo. This cannot be undone.');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile: cards ─── %>
+  <div class="show-mobile">
+    <% members.forEach((m) => { %>
+      <div class="admin-card">
+        <div class="mobile-card-head">
+          <% if (m.photo_path) { %>
+            <img src="<%= m.photo_path %>" alt="" class="mobile-card-thumb mobile-card-thumb-round">
+          <% } %>
+          <div class="mobile-card-info">
+            <strong><%= m.full_name %></strong>
+            <% if (m.job_title) { %>
+              <div class="text-muted" style="font-size: 13px;"><%= m.job_title %></div>
+            <% } %>
+            <div class="mobile-card-meta">
+              <span>Order: <%= m.sort_order %></span>
+              <% if (m.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Hidden</span>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/council-members/<%= m.slug %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+          <a href="/admin/council/<%= m.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+          <form action="/admin/council/<%= m.id %>/toggle" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline">
+              <%= m.is_active ? 'Hide' : 'Show' %>
+            </button>
+          </form>
+
+          <form action="/admin/council/<%= m.id %>/delete" method="POST" style="display:inline;"
+                onsubmit="return confirm('Delete this council member? This will also remove their photo. This cannot be undone.');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

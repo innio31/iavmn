@@ -1,0 +1,163 @@
+<%
+  const isEdit = mode === 'edit';
+  const action = isEdit ? `/admin/hero/${slide.id}` : '/admin/hero';
+  const pageTitle = isEdit ? 'Edit Hero Slide' : 'New Hero Slide';
+  const hasExistingImage = isEdit && slide.image_path;
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><%= pageTitle %></h1>
+    <p class="page-subtitle">
+      <a href="/admin/hero">&larr; Back to Hero Slides</a>
+    </p>
+  </div>
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="admin-card" style="border-color: #f5c6cb; background: #f8d7da; color: #721c24;">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 8px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<form action="<%= action %>" method="POST" enctype="multipart/form-data" class="admin-card" novalidate>
+
+  <div class="form-row">
+    <label for="title">Title <span style="color: #c0392b;">*</span></label>
+    <input
+      type="text"
+      id="title"
+      name="title"
+      value="<%= slide.title || '' %>"
+      required
+      minlength="2"
+      maxlength="200"
+      autofocus>
+    <span class="form-hint">The large heading shown on the slide.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="subtitle">Subtitle</label>
+    <textarea
+      id="subtitle"
+      name="subtitle"
+      rows="3"
+      maxlength="400"><%= slide.subtitle || '' %></textarea>
+    <span class="form-hint">Short supporting sentence. Max 400 characters.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="image">
+      Slide Image <% if (!hasExistingImage) { %><span style="color: #c0392b;">*</span><% } %>
+    </label>
+
+    <% if (hasExistingImage) { %>
+      <div class="current-image-block">
+        <span class="form-hint" style="margin-bottom: 8px;">Current image:</span>
+        <div class="image-preview-container">
+          <img src="<%= slide.image_path %>" alt="Current slide image" class="image-preview" id="currentImage">
+        </div>
+        <span class="form-hint">Choose a new file below to replace it. Otherwise, the current image stays.</span>
+      </div>
+    <% } %>
+
+    <input
+      type="file"
+      id="image"
+      name="image"
+      accept="image/png,image/jpeg,image/webp,image/gif"
+      <%= hasExistingImage ? '' : 'required' %>
+      onchange="previewImage(event)">
+
+    <span class="form-hint">
+      JPG, PNG, WEBP, or GIF. Max 5 MB. Recommended size: <strong>1920 × 1080</strong> pixels (landscape).
+    </span>
+
+    <div class="image-preview-container" id="newPreviewWrap" style="display: none; margin-top: 10px;">
+      <span class="form-hint">New image preview:</span>
+      <img src="" alt="New image preview" class="image-preview" id="newPreview">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label for="cta_text">Button text</label>
+    <input
+      type="text"
+      id="cta_text"
+      name="cta_text"
+      value="<%= slide.cta_text || '' %>"
+      maxlength="80"
+      placeholder="Learn More">
+    <span class="form-hint">Optional. Leave blank to hide the button.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="cta_url">Button link</label>
+    <input
+      type="text"
+      id="cta_url"
+      name="cta_url"
+      value="<%= slide.cta_url || '' %>"
+      maxlength="255"
+      placeholder="/about">
+    <span class="form-hint">
+      Where the button goes. Use <code>/about</code> for internal pages, or a full URL like <code>https://example.com</code>.
+    </span>
+  </div>
+
+  <div class="form-row">
+    <label for="sort_order">Display order</label>
+    <input
+      type="number"
+      id="sort_order"
+      name="sort_order"
+      value="<%= slide.sort_order !== undefined && slide.sort_order !== null ? slide.sort_order : 0 %>"
+      min="0"
+      max="9999"
+      inputmode="numeric">
+    <span class="form-hint">Lower numbers appear first. Use 0, 1, 2… to control the order.</span>
+  </div>
+
+  <div class="form-row">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        name="is_active"
+        value="1"
+        <%= slide.is_active ? 'checked' : '' %>>
+      <span>Active (visible on the public site)</span>
+    </label>
+  </div>
+
+  <div class="settings-actions">
+    <button type="submit" class="btn btn-primary">
+      <%= isEdit ? 'Save Changes' : 'Create Slide' %>
+    </button>
+    <a href="/admin/hero" class="btn btn-outline">Cancel</a>
+  </div>
+
+</form>
+
+<script>
+  function previewImage(event) {
+    const input = event.target;
+    const wrap = document.getElementById('newPreviewWrap');
+    const img = document.getElementById('newPreview');
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        img.src = e.target.result;
+        wrap.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      img.src = '';
+      wrap.style.display = 'none';
+    }
+  }
+</script>

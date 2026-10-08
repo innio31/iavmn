@@ -1,0 +1,126 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Membership Tiers</h1>
+    <p class="page-subtitle">
+      Manage membership categories. <strong>Order</strong> controls display order (lower = first).
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/tiers/new" class="btn btn-primary">+ New Tier</a>
+  </div>
+</div>
+
+<% if (!tiers || tiers.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No membership tiers yet.</p>
+      <p><a href="/admin/tiers/new" class="btn btn-primary">Create your first tier</a></p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop / tablet: table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th style="width: 60px;">Icon</th>
+          <th>Name</th>
+          <th style="width: 130px;">Fee</th>
+          <th style="width: 70px;">Order</th>
+          <th style="width: 100px;">Status</th>
+          <th style="width: 240px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% tiers.forEach((t) => { %>
+          <tr>
+            <td>
+              <span class="tier-icon-cell"><%= t.icon || '—' %></span>
+            </td>
+            <td>
+              <strong><%= t.name %></strong>
+              <% if (t.short_description) { %>
+                <br><span class="text-muted" style="font-size: 13px;"><%= t.short_description %></span>
+              <% } %>
+              <br><span class="text-muted" style="font-size: 12px;">/membership/<%= t.slug %></span>
+            </td>
+            <td>
+              <strong><%= t.currency %> <%= Number(t.fee_amount).toLocaleString() %></strong>
+            </td>
+            <td><%= t.sort_order %></td>
+            <td>
+              <% if (t.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Hidden</span>
+              <% } %>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/membership/<%= t.slug %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+                <a href="/admin/tiers/<%= t.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+                <form action="/admin/tiers/<%= t.id %>/toggle" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-outline">
+                    <%= t.is_active ? 'Hide' : 'Show' %>
+                  </button>
+                </form>
+
+                <form action="/admin/tiers/<%= t.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Delete this membership tier? This cannot be undone. Tiers with applications cannot be deleted.');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile: cards ─── %>
+  <div class="show-mobile">
+    <% tiers.forEach((t) => { %>
+      <div class="admin-card">
+        <div class="mobile-card-head">
+          <% if (t.icon) { %>
+            <div class="mobile-card-icon"><%= t.icon %></div>
+          <% } %>
+          <div class="mobile-card-info">
+            <strong><%= t.name %></strong>
+            <% if (t.short_description) { %>
+              <div class="text-muted" style="font-size: 13px;"><%= t.short_description %></div>
+            <% } %>
+            <div class="mobile-card-meta">
+              <span><%= t.currency %> <%= Number(t.fee_amount).toLocaleString() %></span>
+              <span>Order: <%= t.sort_order %></span>
+              <% if (t.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Hidden</span>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/membership/<%= t.slug %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">View</a>
+          <a href="/admin/tiers/<%= t.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+          <form action="/admin/tiers/<%= t.id %>/toggle" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline">
+              <%= t.is_active ? 'Hide' : 'Show' %>
+            </button>
+          </form>
+
+          <form action="/admin/tiers/<%= t.id %>/delete" method="POST" style="display:inline;"
+                onsubmit="return confirm('Delete this membership tier? This cannot be undone. Tiers with applications cannot be deleted.');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

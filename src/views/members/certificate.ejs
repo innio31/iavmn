@@ -1,0 +1,166 @@
+<%
+  const siteShort = (settings && settings.site_short_name) || appName || 'IAVMN';
+  const siteName = (settings && settings.site_name) || siteShort;
+
+  const isActive = member.status === 'active';
+  const isEligible = isActive;
+
+  const verificationUrl = ((settings && settings.app_url) || '') + '/verify/' + encodeURIComponent(member.member_number);
+%>
+
+<div class="m-page-head">
+  <div>
+    <h1 class="m-page-title">My Certificate</h1>
+    <p class="m-page-sub">Preview and download your official membership certificate.</p>
+  </div>
+  <div class="m-page-actions">
+    <a href="/member" class="btn btn-outline">Back to Dashboard</a>
+  </div>
+</div>
+
+<% if (!isEligible) { %>
+
+  <div class="m-banner m-banner-warning">
+    <strong>Certificate not available.</strong>
+    <% if (member.status === 'expired') { %>
+      Your membership has expired. Please contact the Institute to renew before your certificate can be reissued.
+    <% } else if (member.status === 'suspended') { %>
+      Your membership is currently suspended. Contact the Institute for more information.
+    <% } else if (member.status === 'cancelled') { %>
+      Your membership has been cancelled. Contact the Institute for more information.
+    <% } else { %>
+      Your membership must be active before a certificate is available.
+    <% } %>
+  </div>
+
+  <p>
+    <a href="/contact" class="btn btn-primary">Contact the Institute</a>
+  </p>
+
+<% } else { %>
+
+  <%# ─── Certificate preview ─── %>
+  <div class="cert-preview-wrap">
+    <div class="cert-preview" id="certPreview">
+
+      <div class="cert-border">
+        <div class="cert-inner">
+
+          <div class="cert-header">
+            <div class="cert-logo">
+              <% if (settings && settings.site_logo_path) { %>
+                <img src="<%= settings.site_logo_path %>" alt="<%= siteName %>" class="cert-logo-img">
+              <% } else { %>
+                <div class="cert-logo-text"><%= siteShort %></div>
+              <% } %>
+            </div>
+            <div class="cert-org-name"><%= siteName %></div>
+          </div>
+
+          <div class="cert-title-block">
+            <div class="cert-title">Certificate of Membership</div>
+            <div class="cert-subtitle">This certifies that</div>
+          </div>
+
+          <div class="cert-member-name"><%= member.full_name %></div>
+
+          <div class="cert-body-text">
+            is a registered member of the Institute of Assets &amp; Value Management Nigeria,
+            holding the grade of
+          </div>
+
+          <div class="cert-tier"><%= member.tier_name %></div>
+
+          <div class="cert-body-text cert-body-small">
+            Member number <strong><%= member.member_number %></strong>
+            &middot;
+            Issued <%= fmtDate(member.joined_at) %>
+            <% if (member.expires_at) { %>
+              &middot; Valid until <strong><%= fmtDate(member.expires_at) %></strong>
+            <% } %>
+          </div>
+
+          <div class="cert-footer">
+            <div class="cert-signature-block">
+              <% if (settings && settings.cert_signature_path) { %>
+                <img src="<%= settings.cert_signature_path %>" alt="Signature" class="cert-signature-img">
+              <% } else { %>
+                <div class="cert-signature-line"></div>
+              <% } %>
+              <div class="cert-signature-role">Registrar / Chief Executive</div>
+            </div>
+
+            <div class="cert-qr">
+              <img
+                src="/member/certificate/qr.png"
+                alt="Verification QR code"
+                class="cert-qr-img"
+                width="100"
+                height="100">
+              <div class="cert-qr-label">Scan to verify</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <%# ─── Actions ─── %>
+  <div class="cert-actions">
+    <a href="/member/certificate/download.pdf" class="btn btn-primary">
+      Download PDF
+    </a>
+    <button type="button" class="btn btn-outline" onclick="copyVerifyUrl()" data-url="<%= verificationUrl %>">
+      Copy Verification Link
+    </button>
+    <a href="/verify/<%= encodeURIComponent(member.member_number) %>" target="_blank" rel="noopener" class="btn btn-outline">
+      Preview Verification Page
+    </a>
+  </div>
+
+  <p class="cert-note">
+    Anyone with the verification link can confirm your membership status on our public verification page.
+    <br>
+    Verification URL: <code class="m-info-mono"><%= verificationUrl %></code>
+  </p>
+
+<% } %>
+
+<script>
+  function copyVerifyUrl() {
+    var btn = event.currentTarget;
+    var url = btn.getAttribute('data-url');
+    if (!url) return;
+
+    function done() {
+      var original = btn.textContent;
+      btn.textContent = 'Link copied!';
+      btn.classList.add('copied');
+      setTimeout(function () {
+        btn.textContent = original;
+        btn.classList.remove('copied');
+      }, 1800);
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done).catch(function () {
+        fallback(url, done);
+      });
+    } else {
+      fallback(url, done);
+    }
+  }
+
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+</script>

@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Environment variables — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Ignore everything in uploads EXCEPT branding/ and .gitkeep placeholders
+public/uploads/**/*
+!public/uploads/**/
+!public/uploads/**/.gitkeep
+!public/uploads/branding/
+!public/uploads/branding/**
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Build / cache
+dist/
+build/
+.cache/
+
+iavmn-local-backup-*.sql

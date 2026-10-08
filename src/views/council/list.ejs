@@ -1,0 +1,42 @@
+<section class="page-hero">
+  <div class="container">
+    <h1>Council Members</h1>
+    <p>Meet the professionals leading the Institute of Assets &amp; Value Management Nigeria.</p>
+  </div>
+</section>
+
+<section class="council-list-section">
+  <div class="container">
+    <% if (!members || members.length === 0) { %>
+      <div class="empty-public">
+        <p>Council member profiles are coming soon.</p>
+      </div>
+    <% } else { %>
+      <div class="council-grid">
+        <% members.forEach((m) => { %>
+          <a href="/council-members/<%= m.slug %>" class="council-card">
+            <div class="council-card-photo">
+              <% if (m.photo_path) { %>
+                <img src="<%= m.photo_path %>" alt="<%= m.full_name %>" loading="lazy">
+              <% } else { %>
+                <div class="council-photo-placeholder">
+                  <%= m.full_name.charAt(0).toUpperCase() %>
+                </div>
+              <% } %>
+            </div>
+            <div class="council-card-body">
+              <h3 class="council-card-name"><%= m.full_name %></h3>
+              <% if (m.job_title) { %>
+                <p class="council-card-title"><%= m.job_title %></p>
+              <% } %>
+              <% if (m.bio_short) { %>
+                <p class="council-card-bio"><%= m.bio_short %></p>
+              <% } %>
+              <span class="council-card-link">View profile &rarr;</span>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+    <% } %>
+  </div>
+</section>

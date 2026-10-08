@@ -1,0 +1,62 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Settings</h1>
+    <p class="page-subtitle">Manage site-wide settings. Changes take effect immediately.</p>
+  </div>
+</div>
+
+<%
+  // Build a map of group key -> group object for quick lookup
+  const activeGroup = groups.find((g) => g.key === activeTab) || groups[0];
+
+  // Helper to get a setting value or empty string
+  const val = (key) => (settings[key] !== undefined && settings[key] !== null) ? settings[key] : '';
+%>
+
+<div class="admin-card">
+
+  <nav class="settings-tabs" role="tablist">
+    <% groups.forEach((g) => { %>
+      <a
+        href="/admin/settings?tab=<%= g.key %>"
+        class="settings-tab <%= g.key === activeTab ? 'active' : '' %>"
+        role="tab">
+        <%= g.label %>
+      </a>
+    <% }); %>
+  </nav>
+
+  <form action="/admin/settings" method="POST" class="settings-form" novalidate>
+    <input type="hidden" name="_tab" value="<%= activeGroup.key %>">
+
+    <% activeGroup.fields.forEach((field) => { %>
+      <div class="form-row">
+        <label for="<%= field.name %>"><%= field.label %></label>
+
+        <% if (field.type === 'textarea') { %>
+          <textarea
+            id="<%= field.name %>"
+            name="<%= field.name %>"
+            rows="4"><%= val(field.name) %></textarea>
+        <% } else { %>
+          <input
+            type="<%= field.type === 'url' ? 'url' : (field.type === 'email' ? 'email' : 'text') %>"
+            id="<%= field.name %>"
+            name="<%= field.name %>"
+            value="<%= val(field.name) %>"
+            <% if (field.type === 'email') { %>inputmode="email" autocomplete="email"<% } %>
+            <% if (field.type === 'url') { %>inputmode="url"<% } %>>
+        <% } %>
+
+        <% if (field.hint) { %>
+          <span class="form-hint"><%= field.hint %></span>
+        <% } %>
+      </div>
+    <% }); %>
+
+    <div class="settings-actions">
+      <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+  </form>
+
+</div>

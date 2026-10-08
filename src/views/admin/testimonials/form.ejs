@@ -1,0 +1,168 @@
+<%
+  const isEdit = mode === 'edit';
+  const action = isEdit ? `/admin/testimonials/${testimonial.id}` : '/admin/testimonials';
+  const pageTitle = isEdit ? 'Edit Testimonial' : 'New Testimonial';
+  const hasExistingPhoto = isEdit && testimonial.author_photo_path;
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><%= pageTitle %></h1>
+    <p class="page-subtitle">
+      <a href="/admin/testimonials">&larr; Back to Testimonials</a>
+    </p>
+  </div>
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="admin-card" style="border-color: #f5c6cb; background: #f8d7da; color: #721c24;">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 8px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<form action="<%= action %>" method="POST" enctype="multipart/form-data" class="admin-card" novalidate>
+
+  <div class="form-row">
+    <label for="author_name">Author name <span style="color: #c0392b;">*</span></label>
+    <input
+      type="text"
+      id="author_name"
+      name="author_name"
+      value="<%= testimonial.author_name || '' %>"
+      required
+      minlength="2"
+      maxlength="120"
+      placeholder="e.g. Jane Doe"
+      autofocus>
+  </div>
+
+  <div class="form-row">
+    <label for="author_title">Author title / role</label>
+    <input
+      type="text"
+      id="author_title"
+      name="author_title"
+      value="<%= testimonial.author_title || '' %>"
+      maxlength="180"
+      placeholder="e.g. Fellow, 2024">
+    <span class="form-hint">Optional. Position, membership grade, or year.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="quote">Testimonial quote <span style="color: #c0392b;">*</span></label>
+    <textarea
+      id="quote"
+      name="quote"
+      rows="6"
+      required
+      minlength="5"
+      maxlength="2000"
+      placeholder="What did the member say about the Institute?"><%= testimonial.quote || '' %></textarea>
+    <span class="form-hint">
+      Max 2000 characters.
+      <span id="quoteCount" style="float: right;">
+        <%= (testimonial.quote || '').length %> / 2000
+      </span>
+    </span>
+  </div>
+
+  <div class="form-row">
+    <label for="photo">Author photo (optional)</label>
+
+    <% if (hasExistingPhoto) { %>
+      <div class="current-image-block">
+        <span class="form-hint" style="margin-bottom: 8px;">Current photo:</span>
+        <div class="image-preview-container">
+          <img src="<%= testimonial.author_photo_path %>" alt="Current photo" class="image-preview image-preview-square">
+        </div>
+        <span class="form-hint">Choose a new file below to replace it. Otherwise, the current photo stays.</span>
+      </div>
+    <% } %>
+
+    <input
+      type="file"
+      id="photo"
+      name="photo"
+      accept="image/png,image/jpeg,image/webp,image/gif"
+      onchange="previewPhoto(event)">
+
+    <span class="form-hint">
+      JPG, PNG, WEBP, or GIF. Max 5 MB. A <strong>square</strong> image works best (e.g. 400 × 400 px).
+    </span>
+
+    <div class="image-preview-container" id="newPreviewWrap" style="display: none; margin-top: 10px;">
+      <span class="form-hint">New photo preview:</span>
+      <img src="" alt="New photo preview" class="image-preview image-preview-square" id="newPreview">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label for="sort_order">Display order</label>
+    <input
+      type="number"
+      id="sort_order"
+      name="sort_order"
+      value="<%= testimonial.sort_order !== undefined && testimonial.sort_order !== null ? testimonial.sort_order : 0 %>"
+      min="0"
+      max="9999"
+      inputmode="numeric">
+    <span class="form-hint">Lower numbers appear first.</span>
+  </div>
+
+  <div class="form-row">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        name="is_active"
+        value="1"
+        <%= testimonial.is_active ? 'checked' : '' %>>
+      <span>Active (visible on the public site)</span>
+    </label>
+  </div>
+
+  <div class="settings-actions">
+    <button type="submit" class="btn btn-primary">
+      <%= isEdit ? 'Save Changes' : 'Create Testimonial' %>
+    </button>
+    <a href="/admin/testimonials" class="btn btn-outline">Cancel</a>
+  </div>
+
+</form>
+
+<script>
+  // Character counter for quote
+  (function () {
+    const quote = document.getElementById('quote');
+    const counter = document.getElementById('quoteCount');
+    if (!quote || !counter) return;
+
+    function update() {
+      counter.textContent = quote.value.length + ' / 2000';
+    }
+    quote.addEventListener('input', update);
+    update();
+  })();
+
+  // Photo preview
+  function previewPhoto(event) {
+    const input = event.target;
+    const wrap = document.getElementById('newPreviewWrap');
+    const img = document.getElementById('newPreview');
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        img.src = e.target.result;
+        wrap.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      img.src = '';
+      wrap.style.display = 'none';
+    }
+  }
+</script>

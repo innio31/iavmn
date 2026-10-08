@@ -1,0 +1,275 @@
+<%
+  // ─── Site-wide defaults ───
+  var siteName = (settings && settings.site_name) || appName || 'IAVMN';
+  var siteShort = (settings && settings.site_short_name) || siteName;
+  var siteTagline = (settings && settings.site_tagline) || '';
+  var siteDescription = (settings && settings.site_description) || siteTagline;
+  var logoPath = (settings && settings.site_logo_path) || null;
+  var faviconPath = (settings && settings.site_favicon_path) || logoPath;
+  var appUrl = ((settings && settings.app_url) || process.env.APP_URL || '').replace(/\/$/, '');
+
+  // ─── Per-page title ───
+  var pageTitle = (typeof title !== 'undefined' && title) ? title : siteShort;
+  var fullTitle = (pageTitle === siteShort) ? siteName : (pageTitle + ' | ' + siteShort);
+
+  // ─── Meta description (per-page → post excerpt → tier desc → member bio → default) ───
+  var metaDescription = '';
+  if (typeof page !== 'undefined' && page && page.meta_description) {
+    metaDescription = page.meta_description;
+  } else if (typeof post !== 'undefined' && post && post.excerpt) {
+    metaDescription = post.excerpt;
+  } else if (typeof tier !== 'undefined' && tier && tier.short_description) {
+    metaDescription = tier.short_description;
+  } else if (typeof member !== 'undefined' && member && member.bio_short) {
+    metaDescription = member.bio_short;
+  } else if (settings && settings.seo_default_meta_description) {
+    metaDescription = settings.seo_default_meta_description;
+  } else {
+    metaDescription = siteDescription;
+  }
+
+  // ─── Canonical URL ───
+  var canonicalPath = currentPath || '/';
+  var canonicalUrl = appUrl ? (appUrl + canonicalPath) : canonicalPath;
+
+  // ─── Open Graph image (per-page override → settings default → logo) ───
+  var ogImage = null;
+  if (typeof post !== 'undefined' && post && post.cover_image_path) ogImage = post.cover_image_path;
+  else if (typeof member !== 'undefined' && member && member.photo_path) ogImage = member.photo_path;
+  else if (typeof page !== 'undefined' && page && page.og_image_path) ogImage = page.og_image_path;
+  else if (settings && settings.seo_default_og_image) ogImage = settings.seo_default_og_image;
+  else if (logoPath) ogImage = logoPath;
+
+  if (ogImage && appUrl && ogImage.indexOf('http') !== 0) {
+    ogImage = appUrl + ogImage;
+  }
+
+  // ─── OG type: article if we're on a post ───
+  var ogType = (typeof post !== 'undefined' && post) ? 'article' : 'website';
+
+  // ─── Analytics config ───
+  var analyticsEnabled = settings && settings.analytics_enabled === '1' && settings.analytics_ga4_id;
+  var ga4Id = (settings && settings.analytics_ga4_id) || '';
+  var requireConsent = !settings || settings.analytics_require_consent !== '0'; // default: require
+
+  // ─── Schema.org structured data (site-wide Organization + WebSite) ───
+  var orgName = (settings && settings.seo_organization_name) || siteName;
+  var orgLogo = (settings && settings.seo_organization_logo) || logoPath || null;
+  if (orgLogo && appUrl && orgLogo.indexOf('http') !== 0) orgLogo = appUrl + orgLogo;
+
+  var orgCountry = (settings && settings.seo_organization_country) || 'NG';
+  var orgCity = (settings && settings.seo_organization_city) || '';
+
+  var organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: orgName,
+    url: appUrl || '/',
+    description: metaDescription,
+  };
+  if (orgLogo) organizationSchema.logo = orgLogo;
+  if (settings && settings.contact_email) {
+    organizationSchema.email = settings.contact_email;
+  }
+  if (settings && settings.contact_phone) {
+    organizationSchema.telephone = settings.contact_phone;
+  }
+  if (orgCity || settings && settings.contact_address) {
+    organizationSchema.address = {
+      '@type': 'PostalAddress',
+      addressLocality: orgCity || '',
+      addressCountry: orgCountry,
+    };
+    if (settings && settings.contact_address) {
+      organizationSchema.address.streetAddress = settings.contact_address;
+    }
+  }
+  // Social links
+  var sameAs = [];
+  ['social_facebook','social_twitter','social_linkedin','social_youtube','social_instagram','social_threads'].forEach(function (k) {
+    if (settings && settings[k]) sameAs.push(settings[k]);
+  });
+  if (sameAs.length) organizationSchema.sameAs = sameAs;
+
+  var websiteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: siteName,
+    url: appUrl || '/',
+  };
+  if (appUrl) {
+    websiteSchema.potentialAction = {
+      '@type': 'SearchAction',
+      target: appUrl + '/search?q={search_term_string}',
+      'query-input': 'required name=search_term_string',
+    };
+  }
+
+  var twitterHandle = (settings && settings.seo_twitter_handle) || '';
+
+  // ─── PWA theme color ───
+  var pwaTheme = (settings && settings.pwa_theme_color) || '#25573f';
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+  <title><%= fullTitle %></title>
+
+  <!-- Primary Meta -->
+  <meta name="description" content="<%= (metaDescription || '').slice(0, 300) %>">
+  <meta name="author" content="<%= siteName %>">
+  <meta name="theme-color" content="<%= pwaTheme %>">
+
+  <link rel="canonical" href="<%= canonicalUrl %>">
+
+  <!-- Favicon -->
+  <% if (faviconPath) { %>
+    <link rel="icon" type="image/png" href="<%= faviconPath %>">
+    <link rel="apple-touch-icon" href="<%= faviconPath %>">
+  <% } %>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/site.webmanifest">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="<%= ogType %>">
+  <meta property="og:site_name" content="<%= siteName %>">
+  <meta property="og:locale" content="en_NG">
+  <meta property="og:title" content="<%= pageTitle %>">
+  <meta property="og:description" content="<%= (metaDescription || '').slice(0, 300) %>">
+  <meta property="og:url" content="<%= canonicalUrl %>">
+  <% if (ogImage) { %>
+    <meta property="og:image" content="<%= ogImage %>">
+    <meta property="og:image:alt" content="<%= pageTitle %>">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+  <% } %>
+  <% if (ogType === 'article' && typeof post !== 'undefined' && post) { %>
+    <% if (post.published_at) { %>
+      <meta property="article:published_time" content="<%= new Date(post.published_at).toISOString() %>">
+    <% } %>
+    <% if (post.updated_at) { %>
+      <meta property="article:modified_time" content="<%= new Date(post.updated_at).toISOString() %>">
+    <% } %>
+  <% } %>
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="<%= ogImage ? 'summary_large_image' : 'summary' %>">
+  <meta name="twitter:title" content="<%= pageTitle %>">
+  <meta name="twitter:description" content="<%= (metaDescription || '').slice(0, 200) %>">
+  <% if (ogImage) { %>
+    <meta name="twitter:image" content="<%= ogImage %>">
+    <meta name="twitter:image:alt" content="<%= pageTitle %>">
+  <% } %>
+  <% if (twitterHandle) { %>
+    <meta name="twitter:site" content="<%= twitterHandle %>">
+    <meta name="twitter:creator" content="<%= twitterHandle %>">
+  <% } %>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/css/theme.css">
+
+  <!-- Structured Data: Organization & WebSite -->
+  <script type="application/ld+json"><%- JSON.stringify(organizationSchema) %></script>
+  <script type="application/ld+json"><%- JSON.stringify(websiteSchema) %></script>
+
+  <%# Per-page structured data — pages can push additional JSON-LD blocks via `structuredData` %>
+  <% if (typeof structuredData !== 'undefined' && Array.isArray(structuredData)) { %>
+    <% structuredData.forEach(function (block) { %>
+      <script type="application/ld+json"><%- JSON.stringify(block) %></script>
+    <% }); %>
+  <% } %>
+</head>
+<body>
+
+  <%- include('../partials/header') %>
+
+  <main>
+    <%- body %>
+  </main>
+
+  <%- include('../partials/footer') %>
+
+  <%# ─── Cookie consent banner (only when needed) ─── %>
+  <% if (analyticsEnabled && requireConsent) { %>
+    <div id="cookieConsent" class="cookie-consent" hidden>
+      <div class="cookie-consent-inner">
+        <div class="cookie-consent-text">
+          We use cookies to understand how visitors use the site so we can improve it.
+          By clicking <strong>Accept</strong>, you consent to analytics cookies.
+        </div>
+        <div class="cookie-consent-actions">
+          <button type="button" class="cookie-btn cookie-btn-decline" onclick="declineCookies()">
+            Decline
+          </button>
+          <button type="button" class="cookie-btn cookie-btn-accept" onclick="acceptCookies()">
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        var STORAGE_KEY = 'iavmn_consent';
+        var banner = document.getElementById('cookieConsent');
+
+        function loadAnalytics() {
+          <% if (ga4Id) { %>
+            // Inject GA4 snippet
+            var s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=<%= ga4Id %>';
+            document.head.appendChild(s);
+
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            window.gtag = gtag;
+            gtag('js', new Date());
+            gtag('config', '<%= ga4Id %>', { anonymize_ip: true });
+          <% } %>
+        }
+
+        window.acceptCookies = function () {
+          try { localStorage.setItem(STORAGE_KEY, 'accepted'); } catch (e) {}
+          if (banner) banner.hidden = true;
+          loadAnalytics();
+        };
+
+        window.declineCookies = function () {
+          try { localStorage.setItem(STORAGE_KEY, 'declined'); } catch (e) {}
+          if (banner) banner.hidden = true;
+        };
+
+        var stored = null;
+        try { stored = localStorage.getItem(STORAGE_KEY); } catch (e) {}
+
+        if (stored === 'accepted') {
+          loadAnalytics();
+        } else if (stored === 'declined') {
+          // do nothing
+        } else {
+          // First visit — show the banner
+          if (banner) banner.hidden = false;
+        }
+      })();
+    </script>
+  <% } else if (analyticsEnabled) { %>
+    <%# No consent required — load GA4 immediately %>
+    <% if (ga4Id) { %>
+      <script async src="https://www.googletagmanager.com/gtag/js?id=<%= ga4Id %>"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '<%= ga4Id %>', { anonymize_ip: true });
+      </script>
+    <% } %>
+  <% } %>
+
+</body>
+</html>

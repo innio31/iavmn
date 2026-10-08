@@ -1,0 +1,60 @@
+{
+  "name": "Institute of Assets & Value Management Nigeria",
+  "short_name": "IAVMN",
+  "description": "Professional body advancing asset and value management across Nigeria.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#edf3f2",
+  "theme_color": "#25573f",
+  "lang": "en-NG",
+  "dir": "ltr",
+  "categories": ["education", "business", "professional"],
+  "icons": [
+    {
+      "src": "/uploads/branding/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/uploads/branding/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/uploads/branding/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Membership",
+      "short_name": "Membership",
+      "url": "/membership",
+      "description": "View membership tiers"
+    },
+    {
+      "name": "News",
+      "short_name": "News",
+      "url": "/news",
+      "description": "Latest news and updates"
+    },
+    {
+      "name": "Contact",
+      "short_name": "Contact",
+      "url": "/contact",
+      "description": "Contact the Institute"
+    },
+    {
+      "name": "Member Portal",
+      "short_name": "Portal",
+      "url": "/member/login",
+      "description": "Log in to your member account"
+    }
+  ]
+}

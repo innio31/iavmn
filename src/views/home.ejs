@@ -1,0 +1,245 @@
+<%
+  const hasSlides = Array.isArray(slides) && slides.length > 0;
+  const hasTestimonials = Array.isArray(testimonials) && testimonials.length > 0;
+  const hasTiers = Array.isArray(tiers) && tiers.length > 0;
+  const hasLatestPosts = Array.isArray(latestPosts) && latestPosts.length > 0;
+  const tagline = (settings && settings.site_tagline) || 'Welcome to the Institute of Assets & Value Management Nigeria.';
+  const siteDescription = (settings && settings.site_description) || '';
+
+  const fmtDate = (dt) => {
+    if (!dt) return '';
+    const d = new Date(dt);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+%>
+
+<% if (hasSlides) { %>
+  <section class="hero-carousel" id="heroCarousel">
+    <div class="hero-slides">
+      <% slides.forEach((slide, i) => { %>
+        <div class="hero-slide <%= i === 0 ? 'active' : '' %>"
+             style="background-image: url('<%= slide.image_path %>');"
+             data-index="<%= i %>">
+          <div class="hero-overlay"></div>
+          <div class="hero-content">
+            <h2 class="hero-title"><%= slide.title %></h2>
+            <% if (slide.subtitle) { %>
+              <p class="hero-subtitle"><%= slide.subtitle %></p>
+            <% } %>
+            <% if (slide.cta_text && slide.cta_url) { %>
+              <a href="<%= slide.cta_url %>" class="btn btn-secondary"><%= slide.cta_text %></a>
+            <% } %>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+
+    <% if (slides.length > 1) { %>
+      <button type="button" class="hero-nav hero-prev" aria-label="Previous slide" onclick="heroPrev()">&#10094;</button>
+      <button type="button" class="hero-nav hero-next" aria-label="Next slide" onclick="heroNext()">&#10095;</button>
+
+      <div class="hero-dots">
+        <% slides.forEach((slide, i) => { %>
+          <button type="button"
+                  class="hero-dot <%= i === 0 ? 'active' : '' %>"
+                  aria-label="Go to slide <%= i + 1 %>"
+                  onclick="heroGo(<%= i %>)"></button>
+        <% }); %>
+      </div>
+    <% } %>
+  </section>
+<% } else { %>
+  <section class="hero">
+    <div class="container">
+      <h1><%= (settings && settings.site_short_name) || appName %></h1>
+      <p><%= tagline %></p>
+    </div>
+  </section>
+<% } %>
+
+<section class="home-section">
+  <div class="container">
+    <h2 class="text-center">About Us</h2>
+    <p class="home-intro">
+      <%= siteDescription || 'The Institute of Assets and Values Management of Nigeria (IAVMN) is a professional body dedicated to advancing the disciplines of asset management and related advisory services across Nigeria.' %>
+    </p>
+  </div>
+</section>
+
+<section class="home-section section-alt">
+  <div class="container">
+    <h2 class="text-center">Membership</h2>
+    <p class="text-center text-muted mb-4">Choose the category that fits your professional stage.</p>
+
+    <% if (hasTiers) { %>
+      <div class="home-cards">
+        <% tiers.forEach((t) => { %>
+          <a href="/membership/<%= t.slug %>" class="home-card">
+            <div class="home-card-icon"><%= t.icon || '★' %></div>
+            <h3><%= t.name %></h3>
+            <p><%= t.short_description || 'Click to learn more about this membership category.' %></p>
+            <% if (Number(t.fee_amount) > 0) { %>
+              <div class="home-card-fee"><%= t.currency %> <%= Number(t.fee_amount).toLocaleString() %></div>
+            <% } else { %>
+              <div class="home-card-fee">Free to apply</div>
+            <% } %>
+          </a>
+        <% }); %>
+      </div>
+    <% } else { %>
+      <div class="home-cards">
+        <a href="/membership/student" class="home-card">
+          <div class="home-card-icon">🎓</div>
+          <h3>Student Member</h3>
+          <p>For undergraduates and full-time students in recognised tertiary institutions.</p>
+        </a>
+        <a href="/membership/associate" class="home-card">
+          <div class="home-card-icon">👥</div>
+          <h3>Associate Member</h3>
+          <p>For early-career professionals, graduates, and technicians.</p>
+        </a>
+        <a href="/membership/corporate" class="home-card">
+          <div class="home-card-icon">💼</div>
+          <h3>Corporate Member</h3>
+          <p>For practising professionals in accounting, finance, engineering, and logistics.</p>
+        </a>
+        <a href="/membership/fellow" class="home-card">
+          <div class="home-card-icon">🏅</div>
+          <h3>Fellow</h3>
+          <p>For senior professionals who have made significant contributions to the profession.</p>
+        </a>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<% if (hasTestimonials) { %>
+  <section class="home-section">
+    <div class="container">
+      <h2 class="text-center">What Our Members Say</h2>
+      <p class="text-center text-muted mb-4">Real voices from the IAVMN community.</p>
+
+      <div class="testimonials-scroller" id="testimonialsScroller">
+        <% testimonials.forEach((t) => { %>
+          <div class="testimonial-card">
+            <div class="testimonial-quote-mark">&ldquo;</div>
+            <p class="testimonial-quote"><%= t.quote %></p>
+            <div class="testimonial-author">
+              <% if (t.author_photo_path) { %>
+                <img src="<%= t.author_photo_path %>" alt="<%= t.author_name %>" class="testimonial-avatar" loading="lazy">
+              <% } else { %>
+                <div class="testimonial-avatar testimonial-avatar-placeholder">
+                  <%= (t.author_name || '?').charAt(0).toUpperCase() %>
+                </div>
+              <% } %>
+              <div class="testimonial-author-info">
+                <div class="testimonial-author-name"><%= t.author_name %></div>
+                <% if (t.author_title) { %>
+                  <div class="testimonial-author-title"><%= t.author_title %></div>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        <% }); %>
+      </div>
+
+      <% if (testimonials.length > 1) { %>
+        <div class="testimonials-hint">Swipe to see more &rarr;</div>
+      <% } %>
+    </div>
+  </section>
+<% } %>
+
+<% if (hasLatestPosts) { %>
+  <section class="home-section section-alt">
+    <div class="container">
+      <h2 class="text-center">Latest News</h2>
+      <p class="text-center text-muted mb-4">Updates, events, and announcements from the Institute.</p>
+
+      <div class="home-news-grid">
+        <% latestPosts.forEach((p) => { %>
+          <a href="/news/<%= p.slug %>" class="home-news-card">
+            <div class="home-news-cover">
+              <% if (p.cover_image_path) { %>
+                <img src="<%= p.cover_image_path %>" alt="<%= p.title %>" loading="lazy">
+              <% } else { %>
+                <div class="home-news-cover-placeholder">
+                  <%= (settings && settings.site_short_name) || 'IAVMN' %>
+                </div>
+              <% } %>
+            </div>
+            <div class="home-news-body">
+              <% if (p.published_at) { %>
+                <div class="home-news-date"><%= fmtDate(p.published_at) %></div>
+              <% } %>
+              <h3 class="home-news-title"><%= p.title %></h3>
+              <% if (p.excerpt) { %>
+                <p class="home-news-excerpt"><%= p.excerpt %></p>
+              <% } %>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+
+      <div class="home-news-cta">
+        <a href="/news" class="btn btn-outline">View All News</a>
+      </div>
+    </div>
+  </section>
+<% } %>
+
+<section class="home-section">
+  <div class="container text-center">
+    <h2>Ready to Get Certified?</h2>
+    <p class="text-muted mb-4">Join a growing community of asset and value management professionals.</p>
+    <a href="/membership" class="btn btn-primary">View Membership Tiers</a>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var slides = document.querySelectorAll('.hero-slide');
+    var dots = document.querySelectorAll('.hero-dot');
+    if (!slides.length) return;
+
+    var current = 0;
+    var timer = null;
+    var INTERVAL = 6000;
+
+    function show(index) {
+      slides.forEach(function (s, i) { s.classList.toggle('active', i === index); });
+      dots.forEach(function (d, i) { d.classList.toggle('active', i === index); });
+      current = index;
+    }
+
+    function next() { show((current + 1) % slides.length); }
+    function prev() { show((current - 1 + slides.length) % slides.length); }
+
+    function start() {
+      if (slides.length < 2) return;
+      stop();
+      timer = setInterval(next, INTERVAL);
+    }
+    function stop() {
+      if (timer) { clearInterval(timer); timer = null; }
+    }
+
+    window.heroNext = function () { next(); start(); };
+    window.heroPrev = function () { prev(); start(); };
+    window.heroGo = function (i) { show(i); start(); };
+
+    var carousel = document.getElementById('heroCarousel');
+    if (carousel) {
+      carousel.addEventListener('mouseenter', stop);
+      carousel.addEventListener('mouseleave', start);
+    }
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) stop(); else start();
+    });
+
+    show(0);
+    start();
+  })();
+</script>

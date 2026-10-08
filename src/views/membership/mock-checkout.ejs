@@ -1,0 +1,90 @@
+<%
+  const feeAmount = Number(application.tier_fee || 0);
+  const feeCurrency = application.tier_currency || 'NGN';
+%>
+
+<section class="page-hero page-hero-compact" style="background: #544A1F;">
+  <div class="container">
+    <h1>Test Checkout</h1>
+    <p>This is a mock Paystack page used only in development.</p>
+  </div>
+</section>
+
+<section class="pay-section">
+  <div class="container container-narrow">
+
+    <div class="mock-banner">
+      <div class="mock-banner-title">⚠ Test Mode — Paystack Not Configured</div>
+      <p class="mock-banner-text">
+        Real payments are not enabled yet. This page simulates the Paystack checkout
+        so you can test the full application flow. When you configure your Paystack
+        API keys, this page will be replaced by Paystack's real secure checkout.
+      </p>
+    </div>
+
+    <div class="mock-card">
+
+      <div class="mock-header">
+        <div class="mock-logo">Paystack <span class="mock-logo-tag">TEST</span></div>
+        <div class="mock-merchant">
+          Paying <strong><%= application.tier_name %> membership</strong><br>
+          <span class="text-muted">to IAVMN</span>
+        </div>
+        <div class="mock-amount">
+          <%= feeCurrency %> <%= feeAmount.toLocaleString() %>
+        </div>
+      </div>
+
+      <div class="mock-body">
+
+        <div class="mock-field">
+          <label>Email</label>
+          <input type="email" value="<%= application.email %>" disabled>
+        </div>
+
+        <div class="mock-field">
+          <label>Card number</label>
+          <input type="text" value="4084 0840 8408 4081" disabled>
+        </div>
+
+        <div class="mock-row">
+          <div class="mock-field">
+            <label>Expiry</label>
+            <input type="text" value="12 / 26" disabled>
+          </div>
+          <div class="mock-field">
+            <label>CVV</label>
+            <input type="text" value="408" disabled>
+          </div>
+        </div>
+
+        <p class="mock-note">
+          These are Paystack's public test card details. No real charge will be made.
+        </p>
+
+        <form action="/membership/apply/<%= application.reference %>/callback?reference=<%= application.reference %>&mock=1" method="POST">
+          <button type="submit" class="btn btn-primary btn-block mock-pay-btn">
+            Pay <%= feeCurrency %> <%= feeAmount.toLocaleString() %>
+          </button>
+        </form>
+
+        <div class="mock-alt">
+          <a href="/membership/apply/<%= application.reference %>/pay">Cancel and go back</a>
+        </div>
+
+      </div>
+
+      <div class="mock-footer">
+        <div class="mock-footer-line">
+          🔒 This is a test environment. No real card data is collected.
+        </div>
+      </div>
+
+    </div>
+
+    <p class="pay-help">
+      Reference: <code class="page-slug-code"><%= application.reference %></code>
+    </p>
+
+  </div>
+</section>

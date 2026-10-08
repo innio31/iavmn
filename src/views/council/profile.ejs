@@ -1,0 +1,112 @@
+<%
+  const paragraphs = (member.bio_full || '')
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  const siteName = (settings && settings.site_name) || appName || 'IAVMN';
+  const appUrl = ((settings && settings.app_url) || '').replace(/\/$/, '');
+  const profileUrl = appUrl + '/council-members/' + member.slug;
+
+  // ─── Per-page structured data: Person ───
+  const personPhoto = member.photo_path
+    ? (member.photo_path.indexOf('http') === 0 ? member.photo_path : appUrl + member.photo_path)
+    : null;
+
+  const personSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: member.full_name,
+    url: profileUrl,
+  };
+
+  if (member.job_title) {
+    personSchema.jobTitle = member.job_title;
+  }
+  if (personPhoto) {
+    personSchema.image = personPhoto;
+  }
+  if (member.email) {
+    personSchema.email = member.email;
+  }
+  if (member.linkedin_url) {
+    personSchema.sameAs = [member.linkedin_url];
+  }
+  if (member.bio_full) {
+    personSchema.description = member.bio_full.slice(0, 400);
+  } else if (member.bio_short) {
+    personSchema.description = member.bio_short;
+  }
+
+  personSchema.affiliation = {
+    '@type': 'Organization',
+    name: siteName,
+  };
+
+  const structuredData = [personSchema];
+%>
+
+<section class="page-hero">
+  <div class="container">
+    <h1><%= member.full_name %></h1>
+    <% if (member.job_title) { %>
+      <p><%= member.job_title %></p>
+    <% } %>
+  </div>
+</section>
+
+<section class="profile-section">
+  <div class="container">
+    <p class="profile-back">
+      <a href="/council-members">&larr; Back to Council Members</a>
+    </p>
+
+    <div class="profile-grid">
+
+      <aside class="profile-photo-col">
+        <div class="profile-photo-wrap">
+          <% if (member.photo_path) { %>
+            <img src="<%= member.photo_path %>" alt="<%= member.full_name %>" class="profile-photo">
+          <% } else { %>
+            <div class="profile-photo profile-photo-placeholder">
+              <%= member.full_name.charAt(0).toUpperCase() %>
+            </div>
+          <% } %>
+        </div>
+
+        <% if (member.email || member.linkedin_url) { %>
+          <div class="profile-contact">
+            <h3 class="profile-contact-title">Contact</h3>
+            <% if (member.email) { %>
+              <p class="profile-contact-item">
+                <span class="profile-contact-label">Email</span>
+                <a href="mailto:<%= member.email %>"><%= member.email %></a>
+              </p>
+            <% } %>
+            <% if (member.linkedin_url) { %>
+              <p class="profile-contact-item">
+                <span class="profile-contact-label">LinkedIn</span>
+                <a href="<%= member.linkedin_url %>" target="_blank" rel="noopener noreferrer">View Profile &rarr;</a>
+              </p>
+            <% } %>
+          </div>
+        <% } %>
+      </aside>
+
+      <div class="profile-body-col">
+        <h2 class="profile-section-title">Biography</h2>
+
+        <% if (paragraphs.length) { %>
+          <div class="profile-bio">
+            <% paragraphs.forEach((para) => { %>
+              <p><%= para.replace(/\n/g, ' ') %></p>
+            <% }); %>
+          </div>
+        <% } else { %>
+          <p class="text-muted">Biography coming soon.</p>
+        <% } %>
+      </div>
+
+    </div>
+  </div>
+</section>

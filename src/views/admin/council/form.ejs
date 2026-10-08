@@ -1,0 +1,242 @@
+<%
+  const isEdit = mode === 'edit';
+  const action = isEdit ? `/admin/council/${member.id}` : '/admin/council';
+  const pageTitle = isEdit ? 'Edit Council Member' : 'New Council Member';
+  const hasExistingPhoto = isEdit && member.photo_path;
+
+  // Auto-suggest slug from name if slug is empty
+  const suggestedSlug = (member.full_name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><%= pageTitle %></h1>
+    <p class="page-subtitle">
+      <a href="/admin/council">&larr; Back to Council Members</a>
+    </p>
+  </div>
+</div>
+
+<% if (errors && errors.length) { %>
+  <div class="admin-card" style="border-color: #f5c6cb; background: #f8d7da; color: #721c24;">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 8px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<form action="<%= action %>" method="POST" enctype="multipart/form-data" class="admin-card" novalidate>
+
+  <div class="form-row">
+    <label for="full_name">Full name <span style="color: #c0392b;">*</span></label>
+    <input
+      type="text"
+      id="full_name"
+      name="full_name"
+      value="<%= member.full_name || '' %>"
+      required
+      minlength="2"
+      maxlength="180"
+      autocomplete="name"
+      autofocus
+      oninput="suggestSlug()">
+    <span class="form-hint">Include titles if desired (e.g. "Prof. Babatunde Akinsanya, PhD").</span>
+  </div>
+
+  <div class="form-row">
+    <label for="job_title">Position / job title</label>
+    <input
+      type="text"
+      id="job_title"
+      name="job_title"
+      value="<%= member.job_title || '' %>"
+      maxlength="180"
+      placeholder="e.g. President / Chairman of Council">
+  </div>
+
+  <div class="form-row">
+    <label for="slug">Custom URL (optional)</label>
+    <input
+      type="text"
+      id="slug"
+      name="slug"
+      value="<%= member.slug || '' %>"
+      maxlength="160"
+      pattern="[a-z0-9-]+"
+      placeholder="<%= suggestedSlug || 'auto-generated-from-name' %>">
+    <span class="form-hint">
+      Leave blank to auto-generate from the name.
+      Profile will be at <code>/council-members/<span id="slugPreview"><%= member.slug || suggestedSlug || 'auto' %></span></code>.
+    </span>
+  </div>
+
+  <div class="form-row">
+    <label for="bio_short">Short bio (for list page)</label>
+    <textarea
+      id="bio_short"
+      name="bio_short"
+      rows="3"
+      maxlength="400"><%= member.bio_short || '' %></textarea>
+    <span class="form-hint">1–2 sentences. Max 400 characters. Shown on the council members list.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="bio_full">Full bio (for profile page)</label>
+    <textarea
+      id="bio_full"
+      name="bio_full"
+      rows="10"><%= member.bio_full || '' %></textarea>
+    <span class="form-hint">Full biography. Shown on the individual member profile page. Line breaks are preserved.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="photo">
+      Photo <% if (!hasExistingPhoto) { %><span style="color: #c0392b;">*</span><% } %>
+    </label>
+
+    <% if (hasExistingPhoto) { %>
+      <div class="current-image-block">
+        <span class="form-hint" style="margin-bottom: 8px;">Current photo:</span>
+        <div class="image-preview-container">
+          <img src="<%= member.photo_path %>" alt="Current photo" class="image-preview image-preview-square">
+        </div>
+        <span class="form-hint">Choose a new file below to replace it. Otherwise, the current photo stays.</span>
+      </div>
+    <% } %>
+
+    <input
+      type="file"
+      id="photo"
+      name="photo"
+      accept="image/png,image/jpeg,image/webp,image/gif"
+      <%= hasExistingPhoto ? '' : 'required' %>
+      onchange="previewPhoto(event)">
+
+    <span class="form-hint">
+      JPG, PNG, WEBP, or GIF. Max 5 MB. A <strong>square</strong> image works best (e.g. 500 × 500 px).
+    </span>
+
+    <div class="image-preview-container" id="newPreviewWrap" style="display: none; margin-top: 10px;">
+      <span class="form-hint">New photo preview:</span>
+      <img src="" alt="New photo preview" class="image-preview image-preview-square" id="newPreview">
+    </div>
+  </div>
+
+  <div class="form-row">
+    <label for="email">Email (optional)</label>
+    <input
+      type="email"
+      id="email"
+      name="email"
+      value="<%= member.email || '' %>"
+      maxlength="180"
+      inputmode="email"
+      autocomplete="email">
+    <span class="form-hint">If provided, will be shown on the profile page as a mailto link.</span>
+  </div>
+
+  <div class="form-row">
+    <label for="linkedin_url">LinkedIn URL (optional)</label>
+    <input
+      type="url"
+      id="linkedin_url"
+      name="linkedin_url"
+      value="<%= member.linkedin_url || '' %>"
+      maxlength="255"
+      inputmode="url"
+      placeholder="https://linkedin.com/in/username">
+  </div>
+
+  <div class="form-row">
+    <label for="sort_order">Display order</label>
+    <input
+      type="number"
+      id="sort_order"
+      name="sort_order"
+      value="<%= member.sort_order !== undefined && member.sort_order !== null ? member.sort_order : 0 %>"
+      min="0"
+      max="9999"
+      inputmode="numeric">
+    <span class="form-hint">Lower numbers appear first (e.g. President = 0, Vice President = 1).</span>
+  </div>
+
+  <div class="form-row">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        name="is_active"
+        value="1"
+        <%= member.is_active ? 'checked' : '' %>>
+      <span>Active (visible on the public site)</span>
+    </label>
+  </div>
+
+  <div class="settings-actions">
+    <button type="submit" class="btn btn-primary">
+      <%= isEdit ? 'Save Changes' : 'Create Member' %>
+    </button>
+    <a href="/admin/council" class="btn btn-outline">Cancel</a>
+  </div>
+
+</form>
+
+<script>
+  // Auto-suggest slug from name (only if the user hasn't typed a custom slug)
+  function suggestSlug() {
+    const nameInput = document.getElementById('full_name');
+    const slugInput = document.getElementById('slug');
+    const preview = document.getElementById('slugPreview');
+
+    // Only auto-fill if the slug field is empty
+    if (slugInput.value.trim() === '') {
+      const generated = nameInput.value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      preview.textContent = generated || 'auto';
+    } else {
+      preview.textContent = slugInput.value
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+  }
+
+  // Live preview of slug as user types in the slug field
+  document.getElementById('slug').addEventListener('input', function () {
+    const preview = document.getElementById('slugPreview');
+    const v = this.value.trim();
+    if (v === '') {
+      suggestSlug();
+    } else {
+      preview.textContent = v
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+  });
+
+  // Photo preview
+  function previewPhoto(event) {
+    const input = event.target;
+    const wrap = document.getElementById('newPreviewWrap');
+    const img = document.getElementById('newPreview');
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        img.src = e.target.result;
+        wrap.style.display = 'block';
+      };
+      reader.readAsDataURL(input.files[0]);
+    } else {
+      img.src = '';
+      wrap.style.display = 'none';
+    }
+  }
+</script>

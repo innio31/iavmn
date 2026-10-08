@@ -1,0 +1,108 @@
+<%
+  var siteName = (settings && settings.site_name) || appName || 'IAVMN';
+  var siteShort = (settings && settings.site_short_name) || siteName;
+  var logoPath = (settings && settings.site_logo_path) || null;
+  var faviconPath = (settings && settings.site_favicon_path) || logoPath;
+
+  var pageTitle = (typeof title !== 'undefined' && title) ? title : 'Member Portal';
+  var fullTitle = pageTitle + ' | ' + siteShort;
+
+  // Are we logged in as a member?
+  var member = (typeof currentMember !== 'undefined' && currentMember) ? currentMember : null;
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#25573f">
+  <meta name="robots" content="noindex, nofollow">
+  <title><%= fullTitle %></title>
+
+  <% if (faviconPath) { %>
+    <link rel="icon" type="image/png" href="<%= faviconPath %>">
+  <% } %>
+
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/member.css">
+</head>
+<body class="member-body">
+
+  <header class="member-topbar">
+    <div class="container member-topbar-inner">
+      <a href="/member" class="member-brand">
+        <% if (logoPath) { %>
+          <img src="<%= logoPath %>" alt="<%= siteName %>" class="member-brand-img">
+        <% } else { %>
+          <strong><%= siteShort %></strong>
+        <% } %>
+        <span class="member-brand-tag">Member Portal</span>
+      </a>
+
+      <% if (member) { %>
+        <div class="member-topbar-user">
+          <span class="member-topbar-name hide-mobile"><%= member.full_name %></span>
+          <span class="member-topbar-number"><%= member.member_number %></span>
+        </div>
+      <% } %>
+    </div>
+  </header>
+
+  <% if (member) { %>
+    <nav class="member-nav">
+      <div class="container member-nav-inner">
+        <a href="/member" class="member-nav-item <%= currentPath === '/member' ? 'active' : '' %>">
+          <span class="member-nav-icon" aria-hidden="true">⌂</span>
+          <span>Dashboard</span>
+        </a>
+        <a href="/member/profile" class="member-nav-item <%= currentPath === '/member/profile' ? 'active' : '' %>">
+          <span class="member-nav-icon" aria-hidden="true">☺</span>
+          <span>Profile</span>
+        </a>
+        <a href="/member/payments" class="member-nav-item <%= currentPath === '/member/payments' ? 'active' : '' %>">
+          <span class="member-nav-icon" aria-hidden="true">₦</span>
+          <span>Payments</span>
+        </a>
+        <a href="/member/certificate" class="member-nav-item <%= currentPath === '/member/certificate' ? 'active' : '' %>">
+          <span class="member-nav-icon" aria-hidden="true">✦</span>
+          <span>Certificate</span>
+        </a>
+        <form action="/member/logout" method="POST" class="member-nav-logout-form">
+          <button type="submit" class="member-nav-item member-nav-button">
+            <span class="member-nav-icon" aria-hidden="true">⎋</span>
+            <span>Log Out</span>
+          </button>
+        </form>
+      </div>
+    </nav>
+  <% } %>
+
+  <% if (typeof flash !== 'undefined' && Object.keys(flash).length > 0) { %>
+    <div class="member-flash-wrap">
+      <div class="container">
+        <% ['success', 'error', 'info', 'warning'].forEach(function (type) { %>
+          <% if (flash[type]) { %>
+            <% flash[type].forEach(function (msg) { %>
+              <div class="flash flash-<%= type %>"><%= msg %></div>
+            <% }); %>
+          <% } %>
+        <% }); %>
+      </div>
+    </div>
+  <% } %>
+
+  <main class="member-main">
+    <%- body %>
+  </main>
+
+  <footer class="member-footer">
+    <div class="container">
+      <p>
+        &copy; <%= new Date().getFullYear() %> <%= siteName %> &middot;
+        <a href="/">Back to main site</a>
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>

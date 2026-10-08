@@ -1,0 +1,51 @@
+# IAVMN — robots.txt
+# Last updated: 2026-10-08
+# Learn more: https://www.robotstxt.org/
+
+# ─── Default: allow everything, block admin & system paths ───
+User-agent: *
+Allow: /
+
+# Admin and authentication
+Disallow: /admin
+Disallow: /admin/
+Disallow: /login
+Disallow: /logout
+Disallow: /setup
+Disallow: /forgot-password
+Disallow: /reset-password/
+
+# Member portal (private)
+Disallow: /member
+Disallow: /member/
+Disallow: /member/login
+Disallow: /member/forgot-password
+Disallow: /member/reset-password/
+Disallow: /member/set-password/
+Disallow: /member/certificate
+Disallow: /member/certificate/
+Disallow: /member/payments
+Disallow: /member/profile
+
+# Transactional / private paths
+Disallow: /unsubscribe/
+Disallow: /webhooks/
+Disallow: /healthz
+Disallow: /membership/apply/
+Disallow: /membership/*/apply
+
+# Search result pages (thin content, prevents duplicate indexing)
+Disallow: /search
+Disallow: /search/
+
+# Block common junk paths
+Disallow: /*.json$
+Disallow: /*.xml$
+Allow: /sitemap.xml
+
+# ─── Main sitemap ───
+# Replace with your live domain after deployment
+Sitemap: http://localhost:3000/sitemap.xml
+
+# ─── Crawl-delay (be polite to shared hosting) ───
+Crawl-delay: 1

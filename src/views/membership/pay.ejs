@@ -1,0 +1,99 @@
+<%
+  const feeAmount = Number(application.tier_fee || 0);
+  const feeCurrency = application.tier_currency || 'NGN';
+%>
+
+<section class="page-hero page-hero-compact">
+  <div class="container">
+    <h1>Complete Your Payment</h1>
+    <p>You're one step away from finalizing your application.</p>
+  </div>
+</section>
+
+<section class="pay-section">
+  <div class="container container-narrow">
+
+    <div class="pay-card">
+
+      <% if (isMock) { %>
+        <div class="pay-mock-banner">
+          <strong>Test mode</strong> — Paystack is not configured yet, so this is a mock checkout.
+          Clicking "Pay Now" will simulate a successful payment.
+        </div>
+      <% } %>
+
+      <div class="pay-header">
+        <div class="pay-icon">💳</div>
+        <h2 class="pay-title">Payment for <%= application.tier_name %></h2>
+        <p class="pay-subtitle">
+          Application reference: <code class="page-slug-code"><%= application.reference %></code>
+        </p>
+      </div>
+
+      <div class="pay-amount-box">
+        <div class="pay-amount-label">Amount due</div>
+        <div class="pay-amount-value">
+          <%= feeCurrency %> <%= feeAmount.toLocaleString() %>
+        </div>
+      </div>
+
+      <div class="pay-details">
+        <div class="pay-detail-row">
+          <span class="pay-detail-label">Applicant</span>
+          <span class="pay-detail-value"><%= application.full_name %></span>
+        </div>
+        <div class="pay-detail-row">
+          <span class="pay-detail-label">Email</span>
+          <span class="pay-detail-value"><%= application.email %></span>
+        </div>
+        <div class="pay-detail-row">
+          <span class="pay-detail-label">Tier</span>
+          <span class="pay-detail-value"><%= application.tier_name %></span>
+        </div>
+        <div class="pay-detail-row">
+          <span class="pay-detail-label">Reference</span>
+          <span class="pay-detail-value"><%= application.reference %></span>
+        </div>
+      </div>
+
+      <div class="pay-actions">
+        <a href="<%= authorization_url %>" class="btn btn-primary btn-block">
+          <%= isMock ? 'Simulate Payment' : 'Pay ' + feeCurrency + ' ' + feeAmount.toLocaleString() + ' with Paystack' %>
+        </a>
+        <a href="/membership/apply/<%= application.reference %>/success" class="btn btn-outline btn-block">
+          Pay Later
+        </a>
+      </div>
+
+      <p class="pay-note">
+        <% if (paystackConfigured) { %>
+          You'll be redirected to Paystack's secure checkout to complete your payment.
+          We accept debit cards, bank transfer, and USSD.
+        <% } else { %>
+          Real payments will be available once Paystack is configured by the administrator.
+        <% } %>
+      </p>
+
+      <div class="pay-trust">
+        <div class="pay-trust-item">
+          <span class="pay-trust-icon">🔒</span>
+          <span>Secure payment</span>
+        </div>
+        <div class="pay-trust-item">
+          <span class="pay-trust-icon">⚡</span>
+          <span>Instant confirmation</span>
+        </div>
+        <div class="pay-trust-item">
+          <span class="pay-trust-icon">✉</span>
+          <span>Email receipt</span>
+        </div>
+      </div>
+
+    </div>
+
+    <p class="pay-help">
+      Having trouble? <a href="/contact">Contact us</a> and we'll help you complete your payment.
+    </p>
+
+  </div>
+</section>

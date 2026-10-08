@@ -1,0 +1,296 @@
+<%
+  const hasSubscribers = subscriberCount > 0;
+%>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Compose Newsletter</h1>
+    <p class="page-subtitle">
+      <a href="/admin/newsletter">&larr; Back to Newsletter</a>
+    </p>
+  </div>
+</div>
+
+<% if (!hasSubscribers) { %>
+  <div class="admin-card" style="border-color: #ffeeba; background: #fffdf6;">
+    <strong style="color: #856404;">No subscribers yet</strong>
+    <p style="margin: 6px 0 0; font-size: 14px; color: #856404;">
+      You have no active subscribers, so there's no one to send to. Once subscribers join
+      (via the footer form on the public site), they'll appear here.
+    </p>
+  </div>
+<% } %>
+
+<% if (errors && errors.length) { %>
+  <div class="admin-card" style="border-color: #f5c6cb; background: #f8d7da; color: #721c24;">
+    <strong>Please fix the following:</strong>
+    <ul style="margin: 8px 0 0; padding-left: 20px;">
+      <% errors.forEach((e) => { %>
+        <li><%= e.msg %></li>
+      <% }); %>
+    </ul>
+  </div>
+<% } %>
+
+<div class="nl-compose-grid">
+
+  <%# ─── Main form ─── %>
+  <form action="/admin/newsletter" method="POST" class="admin-card nl-compose-form" id="composeForm" novalidate>
+
+    <div class="form-row">
+      <label for="subject">Subject line <span style="color: #c0392b;">*</span></label>
+      <input
+        type="text"
+        id="subject"
+        name="subject"
+        value="<%= form.subject %>"
+        required
+        minlength="3"
+        maxlength="250"
+        placeholder="e.g. IAVMN 2026 Conference — Registration Now Open"
+        autofocus>
+      <span class="form-hint">
+        Keep it under 60 characters for best display. This becomes the email subject.
+      </span>
+    </div>
+
+    <div class="form-row">
+      <label>Message body <span style="color: #c0392b;">*</span></label>
+
+      <div class="nl-editor-toolbar">
+        <button type="button" class="nl-toolbar-btn" onclick="fmt('bold')" title="Bold">
+          <strong>B</strong>
+        </button>
+        <button type="button" class="nl-toolbar-btn" onclick="fmt('italic')" title="Italic">
+          <em>I</em>
+        </button>
+        <button type="button" class="nl-toolbar-btn" onclick="fmt('underline')" title="Underline">
+          <u>U</u>
+        </button>
+        <span class="nl-toolbar-sep"></span>
+        <button type="button" class="nl-toolbar-btn" onclick="fmtBlock('h2')" title="Heading">
+          H2
+        </button>
+        <button type="button" class="nl-toolbar-btn" onclick="fmtBlock('p')" title="Paragraph">
+          ¶
+        </button>
+        <span class="nl-toolbar-sep"></span>
+        <button type="button" class="nl-toolbar-btn" onclick="fmtBlock('ul')" title="Bullet list">
+          • List
+        </button>
+        <button type="button" class="nl-toolbar-btn" onclick="fmtBlock('ol')" title="Numbered list">
+          1. List
+        </button>
+        <span class="nl-toolbar-sep"></span>
+        <button type="button" class="nl-toolbar-btn" onclick="makeLink()" title="Insert link">
+          🔗 Link
+        </button>
+        <button type="button" class="nl-toolbar-btn" onclick="fmt('removeFormat')" title="Clear formatting">
+          ✕ Clear
+        </button>
+      </div>
+
+      <div
+        id="editor"
+        class="nl-editor"
+        contenteditable="true"
+        data-placeholder="Write your message here. Use the toolbar above to format text."
+        role="textbox"
+        aria-multiline="true"><%- form.body_html || '' %></div>
+
+      <textarea
+        id="body_html"
+        name="body_html"
+        required
+        hidden><%= form.body_html || '' %></textarea>
+
+      <span class="form-hint">
+        The plain-text version is generated automatically.
+      </span>
+    </div>
+
+    <div class="nl-compose-actions">
+      <button
+        type="submit"
+        class="btn btn-primary"
+        <%= !hasSubscribers ? 'disabled' : '' %>
+        onclick="return confirmSend()">
+        Send to <%= subscriberCount %> Subscriber<%= subscriberCount === 1 ? '' : 's' %>
+      </button>
+      <a href="/admin/newsletter" class="btn btn-outline">Cancel</a>
+    </div>
+
+    <p class="nl-compose-note">
+      Sending will start immediately. The email goes out in batches of 20.
+      You can track progress on the campaign page.
+    </p>
+
+  </form>
+
+  <%# ─── Sidebar ─── %>
+  <aside class="nl-compose-sidebar">
+
+    <div class="admin-card">
+      <h3 class="admin-card-title">Preview</h3>
+      <p class="text-muted" style="margin: 0 0 12px; font-size: 13px;">
+        Live preview of your message.
+      </p>
+      <div class="nl-preview-frame">
+        <div class="nl-preview-header">IAVMN Newsletter</div>
+        <div class="nl-preview-subject" id="previewSubject">(no subject yet)</div>
+        <div class="nl-preview-body" id="previewBody">
+          <p class="text-muted" style="margin: 0; font-size: 13px; font-style: italic;">
+            Your message will appear here.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="admin-card">
+      <h3 class="admin-card-title">Send a test</h3>
+      <p class="text-muted" style="margin: 0 0 12px; font-size: 13px;">
+        Send a copy to your own email first. Prefixes the subject with <strong>[TEST]</strong>.
+      </p>
+      <div class="form-row" style="margin-bottom: 10px;">
+        <input
+          type="email"
+          id="test_email"
+          name="test_email"
+          placeholder="your@email.com"
+          maxlength="180"
+          autocomplete="email"
+          inputmode="email">
+      </div>
+      <button
+        type="button"
+        class="btn btn-outline"
+        style="width: 100%;"
+        onclick="submitTest()">
+        Send Test
+      </button>
+    </div>
+
+    <div class="admin-card nl-tips-card">
+      <h3 class="admin-card-title">Tips</h3>
+      <ul class="nl-tips-list">
+        <li>Keep subject lines under 60 characters.</li>
+        <li>Use short paragraphs and bullet points.</li>
+        <li>Add one clear call-to-action.</li>
+        <li>Every email includes an unsubscribe link automatically.</li>
+      </ul>
+    </div>
+
+  </aside>
+
+</div>
+
+<%# ─── Hidden form for test sends ─── %>
+<form action="/admin/newsletter/test" method="POST" id="testForm" style="display: none;">
+  <input type="hidden" name="subject" id="test_subject">
+  <input type="hidden" name="body_html" id="test_body_html">
+  <input type="hidden" name="test_email" id="test_email_hidden">
+</form>
+
+<script>
+  var editor = document.getElementById('editor');
+  var bodyHtmlInput = document.getElementById('body_html');
+  var subjectInput = document.getElementById('subject');
+  var previewSubject = document.getElementById('previewSubject');
+  var previewBody = document.getElementById('previewBody');
+
+  // ─── Editor commands ───
+  function fmt(cmd) {
+    document.execCommand(cmd, false, null);
+    editor.focus();
+    sync();
+  }
+
+  function fmtBlock(tag) {
+    document.execCommand('formatBlock', false, tag);
+    editor.focus();
+    sync();
+  }
+
+  function makeLink() {
+    var url = prompt('Enter the URL:', 'https://');
+    if (!url) return;
+    if (url.indexOf('://') === -1) url = 'https://' + url;
+    document.execCommand('createLink', false, url);
+    editor.focus();
+    sync();
+  }
+
+  // ─── Sync editor → hidden textarea + preview ───
+  function sync() {
+    var html = editor.innerHTML || '';
+    bodyHtmlInput.value = html;
+    updatePreview();
+  }
+
+  function updatePreview() {
+    var subj = subjectInput.value.trim();
+    previewSubject.textContent = subj || '(no subject yet)';
+
+    var html = editor.innerHTML || '';
+    if (!html || html === '<br>' || html === '<div><br></div>') {
+      previewBody.innerHTML = '<p class="text-muted" style="margin: 0; font-size: 13px; font-style: italic;">Your message will appear here.</p>';
+    } else {
+      previewBody.innerHTML = html;
+    }
+  }
+
+  editor.addEventListener('input', sync);
+  editor.addEventListener('blur', sync);
+  subjectInput.addEventListener('input', updatePreview);
+
+  // Ensure body_html is set on initial load
+  sync();
+
+  // ─── Send confirmation ───
+  function confirmSend() {
+    sync();
+    var count = <%= subscriberCount %>;
+    if (!count) return false;
+    if (!subjectInput.value.trim()) {
+      alert('Please add a subject line.');
+      return false;
+    }
+    return confirm('Send this newsletter to ' + count + ' subscriber' + (count === 1 ? '' : 's') + '?\n\nThis will start sending immediately. You cannot unsend.');
+  }
+
+  // ─── Test send ───
+  function submitTest() {
+    var testEmail = document.getElementById('test_email').value.trim();
+    if (!testEmail) {
+      alert('Enter an email address to send the test to.');
+      return;
+    }
+    if (!subjectInput.value.trim()) {
+      alert('Please add a subject before sending a test.');
+      return;
+    }
+    if (!editor.innerHTML.trim() || editor.innerHTML === '<br>') {
+      alert('Please add a message body before sending a test.');
+      return;
+    }
+
+    sync();
+
+    document.getElementById('test_subject').value = subjectInput.value.trim();
+    document.getElementById('test_body_html').value = bodyHtmlInput.value;
+    document.getElementById('test_email_hidden').value = testEmail;
+    document.getElementById('testForm').submit();
+  }
+
+  // Form submit event — make sure body_html is populated
+  document.getElementById('composeForm').addEventListener('submit', function (e) {
+    sync();
+    if (!subjectInput.value.trim()) {
+      e.preventDefault();
+      alert('Please add a subject line.');
+    } else if (!bodyHtmlInput.value.trim() || bodyHtmlInput.value.trim() === '<br>') {
+      e.preventDefault();
+      alert('Please add a message body.');
+    }
+  });
+</script>

@@ -1,0 +1,109 @@
+<div class="page-header">
+  <div>
+    <h1 class="page-title">FAQs</h1>
+    <p class="page-subtitle">
+      Manage frequently asked questions. <strong>Order</strong> controls display order (lower = first).
+    </p>
+  </div>
+  <div class="page-actions">
+    <a href="/admin/faqs/new" class="btn btn-primary">+ New FAQ</a>
+  </div>
+</div>
+
+<% if (!faqs || faqs.length === 0) { %>
+  <div class="admin-card">
+    <div class="empty-state">
+      <p>No FAQs yet.</p>
+      <p><a href="/admin/faqs/new" class="btn btn-primary">Add your first FAQ</a></p>
+    </div>
+  </div>
+<% } else { %>
+
+  <%# ─── Desktop / tablet: table ─── %>
+  <div class="admin-table-wrap hide-mobile">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Question</th>
+          <th style="width: 70px;">Order</th>
+          <th style="width: 100px;">Status</th>
+          <th style="width: 240px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% faqs.forEach((f) => { %>
+          <tr>
+            <td>
+              <strong><%= f.question %></strong>
+              <br><span class="text-muted" style="font-size: 13px;">
+                <%= f.answer.length > 120 ? f.answer.slice(0, 120) + '…' : f.answer %>
+              </span>
+            </td>
+            <td><%= f.sort_order %></td>
+            <td>
+              <% if (f.is_active) { %>
+                <span class="badge badge-success">Active</span>
+              <% } else { %>
+                <span class="badge badge-muted">Hidden</span>
+              <% } %>
+            </td>
+            <td>
+              <div class="row-actions">
+                <a href="/admin/faqs/<%= f.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+                <form action="/admin/faqs/<%= f.id %>/toggle" method="POST" style="display:inline;">
+                  <button type="submit" class="btn btn-sm btn-outline">
+                    <%= f.is_active ? 'Hide' : 'Show' %>
+                  </button>
+                </form>
+
+                <form action="/admin/faqs/<%= f.id %>/delete" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Delete this FAQ? This cannot be undone.');">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+
+  <%# ─── Mobile: cards ─── %>
+  <div class="show-mobile">
+    <% faqs.forEach((f) => { %>
+      <div class="admin-card">
+        <div style="margin-bottom: 12px;">
+          <strong style="display: block; margin-bottom: 6px;"><%= f.question %></strong>
+          <div class="text-muted" style="font-size: 13px; line-height: 1.5;">
+            <%= f.answer.length > 160 ? f.answer.slice(0, 160) + '…' : f.answer %>
+          </div>
+          <div class="mobile-card-meta" style="margin-top: 10px;">
+            <span>Order: <%= f.sort_order %></span>
+            <% if (f.is_active) { %>
+              <span class="badge badge-success">Active</span>
+            <% } else { %>
+              <span class="badge badge-muted">Hidden</span>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="mobile-card-actions">
+          <a href="/admin/faqs/<%= f.id %>/edit" class="btn btn-sm btn-outline">Edit</a>
+
+          <form action="/admin/faqs/<%= f.id %>/toggle" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-sm btn-outline">
+              <%= f.is_active ? 'Hide' : 'Show' %>
+            </button>
+          </form>
+
+          <form action="/admin/faqs/<%= f.id %>/delete" method="POST" style="display:inline;"
+                onsubmit="return confirm('Delete this FAQ? This cannot be undone.');">
+            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+          </form>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+<% } %>

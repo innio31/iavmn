@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title><%= typeof title !== 'undefined' ? title + ' | ' + appName : appName %></title>
+  <link rel="stylesheet" href="/css/theme.css">
+  <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body class="auth-body">
+
+  <main class="auth-main">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <a href="/" class="auth-logo">
+          <% if (settings && settings.site_logo_path) { %>
+            <img src="<%= settings.site_logo_path %>" alt="<%= settings.site_name || appName %>" class="auth-logo-img">
+          <% } else { %>
+            <strong><%= (settings && settings.site_short_name) || appName %></strong>
+          <% } %>
+        </a>
+      </div>
+
+      <% if (typeof flash !== 'undefined' && Object.keys(flash).length > 0) { %>
+        <div class="auth-flash">
+          <% ['success', 'error', 'info', 'warning'].forEach((type) => { %>
+            <% if (flash[type]) { %>
+              <% flash[type].forEach((msg) => { %>
+                <div class="flash flash-<%= type %>"><%= msg %></div>
+              <% }); %>
+            <% } %>
+          <% }); %>
+        </div>
+      <% } %>
+
+      <%- body %>
+
+    </div>
+
+    <p class="auth-footer">
+      <a href="/">&larr; Back to site</a>
+    </p>
+  </main>
+
+</body>
+</html>
