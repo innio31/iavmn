@@ -4489,3 +4489,39 @@ body.search-overlay-active {
   .success-fee-row-total { font-size: 15px; }
   .success-fee-row-total .success-fee-value { font-size: 16px; }
 }
+/* ─── Tier detail: sidebar fee breakdown ────────────── */
+.tier-sidebar-fee-details {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.tier-sidebar-fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.tier-sidebar-fee-row span:first-child {
+  color: var(--text-muted);
+}
+.tier-sidebar-fee-row span:last-child {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tier-sidebar-fee-row-total {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+  font-size: 15px;
+}
+.tier-sidebar-fee-row-total span:first-child {
+  color: var(--primary);
+  font-weight: 700;
+}
+.tier-sidebar-fee-row-total span:last-child {
+  color: var(--primary);
+  font-size: 18px;
+  font-weight: 700;
+}

@@ -12,6 +12,17 @@
     if (isNaN(d.getTime())) return '';
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
+
+  const currencySymbol = (c) => {
+    if (c === 'NGN') return '₦';
+    if (c === 'USD') return '$';
+    if (c === 'GBP') return '£';
+    if (c === 'EUR') return '€';
+    if (c === 'GHS') return '₵';
+    if (c === 'KES') return 'KSh';
+    if (c === 'ZAR') return 'R';
+    return c + ' ';
+  };
 %>
 
 <% if (hasSlides) { %>
@@ -75,14 +86,20 @@
     <% if (hasTiers) { %>
       <div class="home-cards">
         <% tiers.forEach((t) => { %>
+          <%
+            const reg = Number(t.registration_fee || 0);
+            const mem = Number(t.fee_amount || 0);
+            const total = reg + mem;
+            const isQuote = total === 0;
+          %>
           <a href="/membership/<%= t.slug %>" class="home-card">
             <div class="home-card-icon"><%= t.icon || '★' %></div>
             <h3><%= t.name %></h3>
             <p><%= t.short_description || 'Click to learn more about this membership category.' %></p>
-            <% if (Number(t.fee_amount) > 0) { %>
-              <div class="home-card-fee"><%= t.currency %> <%= Number(t.fee_amount).toLocaleString() %></div>
+            <% if (isQuote) { %>
+              <div class="home-card-fee">Fee on enquiry</div>
             <% } else { %>
-              <div class="home-card-fee">Free to apply</div>
+              <div class="home-card-fee"><%= currencySymbol(t.currency) %> <%= total.toLocaleString() %></div>
             <% } %>
           </a>
         <% }); %>

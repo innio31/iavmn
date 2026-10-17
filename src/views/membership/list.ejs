@@ -1,3 +1,16 @@
+<%
+  const currencySymbol = (c) => {
+    if (c === 'NGN') return '₦';
+    if (c === 'USD') return '$';
+    if (c === 'GBP') return '£';
+    if (c === 'EUR') return '€';
+    if (c === 'GHS') return '₵';
+    if (c === 'KES') return 'KSh';
+    if (c === 'ZAR') return 'R';
+    return c + ' ';
+  };
+%>
+
 <section class="page-hero">
   <div class="container">
     <h1>Membership</h1>
@@ -14,6 +27,12 @@
     <% } else { %>
       <div class="tiers-grid">
         <% tiers.forEach((t) => { %>
+          <%
+            const reg = Number(t.registration_fee || 0);
+            const mem = Number(t.fee_amount || 0);
+            const total = reg + mem;
+            const isQuote = total === 0;
+          %>
           <div class="tier-card">
             <% if (t.icon) { %>
               <div class="tier-card-icon"><%= t.icon %></div>
@@ -26,12 +45,12 @@
             <% } %>
 
             <div class="tier-card-fee">
-              <% if (Number(t.fee_amount) > 0) { %>
-                <span class="tier-fee-label">Application fee</span>
-                <span class="tier-fee-amount"><%= t.currency %> <%= Number(t.fee_amount).toLocaleString() %></span>
+              <% if (isQuote) { %>
+                <span class="tier-fee-label">Fee</span>
+                <span class="tier-fee-amount" style="font-size: 15px;">Fee on enquiry</span>
               <% } else { %>
-                <span class="tier-fee-label">Free to apply</span>
-                <span class="tier-fee-amount">&nbsp;</span>
+                <span class="tier-fee-label">Total fee</span>
+                <span class="tier-fee-amount"><%= currencySymbol(t.currency) %> <%= total.toLocaleString() %></span>
               <% } %>
             </div>
 
