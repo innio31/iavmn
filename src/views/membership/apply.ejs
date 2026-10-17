@@ -1,6 +1,25 @@
 <%
-  const hasFee = Number(tier.fee_amount) > 0;
-  const totalSteps = 3;
+  const currencySymbol = (c) => {
+    if (c === 'NGN') return '₦';
+    if (c === 'USD') return '$';
+    if (c === 'GBP') return '£';
+    if (c === 'EUR') return '€';
+    if (c === 'GHS') return '₵';
+    if (c === 'KES') return 'KSh';
+    if (c === 'ZAR') return 'R';
+    return c + ' ';
+  };
+
+  const fmtMoney = (amount, currency) => {
+    const sym = currencySymbol(currency || 'NGN');
+    return sym + ' ' + Number(amount || 0).toLocaleString();
+  };
+
+  const registrationFee = Number(tier.registration_fee || 0);
+  const membershipFee = Number(tier.fee_amount || 0);
+  const totalFee = registrationFee + membershipFee;
+  const isQuoteBased = totalFee === 0;
+  const hasFee = !isQuoteBased;
 %>
 
 <section class="page-hero page-hero-compact">
@@ -24,15 +43,39 @@
         <% } %>
       </div>
       <div class="apply-tier-fee">
-        <% if (hasFee) { %>
+        <% if (isQuoteBased) { %>
           <span class="apply-tier-fee-label">Fee</span>
-          <span class="apply-tier-fee-amount"><%= tier.currency %> <%= Number(tier.fee_amount).toLocaleString() %></span>
+          <span class="apply-tier-fee-amount" style="font-size: 14px;">By quote</span>
         <% } else { %>
-          <span class="apply-tier-fee-label">Cost</span>
-          <span class="apply-tier-fee-amount">Free</span>
+          <span class="apply-tier-fee-label">Total due</span>
+          <span class="apply-tier-fee-amount"><%= fmtMoney(totalFee, tier.currency) %></span>
         <% } %>
       </div>
     </div>
+
+    <%# ─── Fee breakdown ─── %>
+    <% if (hasFee) { %>
+      <div class="apply-fee-breakdown">
+        <div class="apply-fee-row">
+          <span class="apply-fee-label">Registration form</span>
+          <span class="apply-fee-value"><%= fmtMoney(registrationFee, tier.currency) %></span>
+        </div>
+        <div class="apply-fee-row">
+          <span class="apply-fee-label"><%= tier.name %> membership (annual)</span>
+          <span class="apply-fee-value"><%= fmtMoney(membershipFee, tier.currency) %></span>
+        </div>
+        <div class="apply-fee-row apply-fee-row-total">
+          <span class="apply-fee-label">Total payable</span>
+          <span class="apply-fee-value"><%= fmtMoney(totalFee, tier.currency) %></span>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="apply-quote-notice">
+        <strong>Quote-based membership</strong>
+        This tier does not have a fixed fee. You'll be asked to complete the application form,
+        and our team will contact you with a custom quote based on your organization's profile.
+      </div>
+    <% } %>
 
     <%# ─── Progress steps ─── %>
     <ol class="apply-steps">
@@ -46,7 +89,7 @@
       </li>
       <li class="apply-step">
         <span class="apply-step-num">3</span>
-        <span class="apply-step-label"><%= paystackEnabled ? 'Payment' : 'Confirmation' %></span>
+        <span class="apply-step-label"><%= hasFee ? 'Payment' : 'Submit' %></span>
       </li>
     </ol>
 
@@ -236,7 +279,7 @@
       <%# ─── Submit ─── %>
       <div class="apply-actions">
         <button type="submit" class="btn btn-primary btn-block-mobile">
-          <%= paystackEnabled ? 'Continue to Payment' : 'Submit Application' %>
+          <%= hasFee ? 'Continue to Payment — ' + fmtMoney(totalFee, tier.currency) : 'Submit Application' %>
         </button>
         <a href="/membership/<%= tier.slug %>" class="btn btn-outline btn-block-mobile">Cancel</a>
       </div>

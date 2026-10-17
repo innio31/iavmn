@@ -2103,3 +2103,118 @@ input[type="file"]::file-selector-button:hover {
   }
   .admin-conn-label { display: none; }
 }
+/* ─── Tier form: fee section ────────────────────────── */
+.form-row-split-fees {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+.tier-total-box {
+  background: linear-gradient(135deg, #25573f 0%, #1b4230 100%);
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 18px 0;
+}
+.tier-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+.tier-total-row:last-child {
+  border-bottom: none;
+}
+.tier-total-row-bold {
+  font-weight: 700;
+  font-size: 16px;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 2px solid rgba(255, 255, 255, 0.3);
+  border-bottom: none;
+}
+.tier-total-label {
+  opacity: 0.9;
+}
+.tier-total-value {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tier-total-row-bold .tier-total-value {
+  font-size: 18px;
+  color: #b9a446;
+}
+
+.tier-quote-notice {
+  background: #fff3cd;
+  border: 1px solid #ffeeba;
+  color: #856404;
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 14px 0;
+}
+.tier-quote-notice strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 768px) {
+  .form-row-split-fees {
+    grid-template-columns: 1fr;
+  }
+}
+/* ─── Tier list: fee cells ──────────────────────────── */
+.tier-fee-cell {
+  font-size: 14px;
+  color: #495057;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tier-total-cell {
+  font-size: 15px;
+  color: #25573f;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ─── Mobile fee breakdown ──────────────────────────── */
+.mobile-tier-fee-box {
+  background: #f7faf9;
+  border: 1px solid #e2e8ea;
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 12px 0;
+}
+.mobile-tier-fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+  color: #495057;
+  border-bottom: 1px solid #e2e8ea;
+}
+.mobile-tier-fee-row:last-child {
+  border-bottom: none;
+}
+.mobile-tier-fee-row strong {
+  color: #212529;
+  font-variant-numeric: tabular-nums;
+}
+.mobile-tier-fee-row-bold {
+  font-weight: 700;
+  padding-top: 10px;
+  margin-top: 4px;
+  border-top: 1px solid #cfdad6;
+  border-bottom: none;
+}
+.mobile-tier-fee-row-bold strong {
+  color: #25573f;
+  font-size: 14px;
+}

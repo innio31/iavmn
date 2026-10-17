@@ -1,15 +1,49 @@
 <%
-  const hasFee = Number(application.payment_amount || application.tier_fee) > 0;
-  const feeAmount = Number(application.payment_amount || application.tier_fee || 0);
+  const currencySymbol = (c) => {
+    if (c === 'NGN') return '₦';
+    if (c === 'USD') return '$';
+    if (c === 'GBP') return '£';
+    if (c === 'EUR') return '€';
+    if (c === 'GHS') return '₵';
+    if (c === 'KES') return 'KSh';
+    if (c === 'ZAR') return 'R';
+    return c + ' ';
+  };
+
+  const fmtMoney = (amount, currency) => {
+    const sym = currencySymbol(currency || 'NGN');
+    return sym + ' ' + Number(amount || 0).toLocaleString();
+  };
+
+  const registrationFee = Number(application.tier_registration_fee || 0);
+  const membershipFee = Number(application.tier_fee || 0);
+  const totalFee = registrationFee + membershipFee;
+
+  const hasFee = totalFee > 0;
   const feeCurrency = application.payment_currency || application.tier_currency || 'NGN';
   const isPaid = application.payment_status === 'paid';
   const isPendingPayment = application.payment_status === 'pending' && hasFee;
+  const isQuoteBased = !hasFee;
 %>
 
 <section class="page-hero page-hero-compact">
   <div class="container">
-    <h1>Application Submitted</h1>
-    <p>Thank you for applying. Here is your reference number.</p>
+    <h1>
+      <% if (isQuoteBased) { %>
+        Application Received
+      <% } else if (isPaid) { %>
+        Payment Received
+      <% } else { %>
+        Application Submitted
+      <% } %>
+    </h1>
+    <p>
+      <% if (isQuoteBased) { %>
+        Our team will be in touch with a quote shortly.
+      <% } else { %>
+        Here is your reference number.
+      <% } %>
+    </p>
   </div>
 </section>
 
@@ -26,10 +60,10 @@
       </div>
 
       <h2 class="success-title">
-        <% if (isPaid) { %>
-          Payment Received — Application Complete
-        <% } else if (isPendingPayment) { %>
+        <% if (isQuoteBased) { %>
           Application Received
+        <% } else if (isPaid) { %>
+          Payment Received — Application Complete
         <% } else { %>
           Application Received
         <% } %>
@@ -57,33 +91,65 @@
         Keep this reference safe. You'll need it for any correspondence with the Institute.
       </p>
 
-      <%# ─── Payment status / action ─── %>
-      <% if (isPendingPayment) { %>
+      <%# ─── Quote-based notice ─── %>
+      <% if (isQuoteBased) { %>
         <div class="payment-pending-box">
-          <div class="payment-pending-title">Payment required</div>
+          <div class="payment-pending-title">Quote requested</div>
           <div class="payment-pending-body">
             <p>
-              To complete your application, please pay the application fee of
-              <strong><%= feeCurrency %> <%= feeAmount.toLocaleString() %></strong>.
+              This is a <strong>quote-based membership</strong> — no online payment is required at this stage.
             </p>
-            <p class="payment-pending-actions">
-              <a href="/membership/apply/<%= application.reference %>/pay" class="btn btn-primary">
-                Pay <%= feeCurrency %> <%= feeAmount.toLocaleString() %> Now
-              </a>
-            </p>
-            <p class="payment-pending-note">
-              You can also complete payment later using the same reference number.
+            <p>
+              Our team will review your application and contact you at
+              <strong><%= application.email %></strong> with a custom quote based on your profile.
             </p>
           </div>
         </div>
-      <% } else if (isPaid) { %>
+      <% } %>
+
+      <%# ─── Fee breakdown (if paid) ─── %>
+      <% if (isPaid) { %>
+        <div class="success-fee-breakdown">
+          <div class="success-fee-row">
+            <span class="success-fee-label">Registration form</span>
+            <span class="success-fee-value"><%= fmtMoney(registrationFee, feeCurrency) %></span>
+          </div>
+          <div class="success-fee-row">
+            <span class="success-fee-label"><%= application.tier_name %> membership</span>
+            <span class="success-fee-value"><%= fmtMoney(membershipFee, feeCurrency) %></span>
+          </div>
+          <div class="success-fee-row success-fee-row-total">
+            <span class="success-fee-label">Total paid</span>
+            <span class="success-fee-value"><%= fmtMoney(Number(application.payment_amount || totalFee), feeCurrency) %></span>
+          </div>
+        </div>
+
         <div class="payment-paid-box">
           <div class="payment-paid-icon">✓</div>
           <div class="payment-paid-body">
             <div class="payment-paid-title">Payment confirmed</div>
             <div class="payment-paid-detail">
-              <%= feeCurrency %> <%= feeAmount.toLocaleString() %> paid successfully.
+              Paid on <%= application.payment_paid_at ? new Date(application.payment_paid_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : 'today' %>
             </div>
+          </div>
+        </div>
+      <% } else if (isPendingPayment) { %>
+        <div class="payment-pending-box">
+          <div class="payment-pending-title">Payment required</div>
+          <div class="payment-pending-body">
+            <p>
+              To complete your application, please pay the total of
+              <strong><%= fmtMoney(totalFee, feeCurrency) %></strong>
+              (<%= fmtMoney(registrationFee, feeCurrency) %> registration + <%= fmtMoney(membershipFee, feeCurrency) %> membership).
+            </p>
+            <p class="payment-pending-actions">
+              <a href="/membership/apply/<%= application.reference %>/pay" class="btn btn-primary">
+                Pay <%= fmtMoney(totalFee, feeCurrency) %> Now
+              </a>
+            </p>
+            <p class="payment-pending-note">
+              You can also complete payment later using the same reference number.
+            </p>
           </div>
         </div>
       <% } %>
@@ -122,12 +188,6 @@
                 <td><%= application.employer %></td>
               </tr>
             <% } %>
-            <% if (application.years_experience !== null && application.years_experience !== undefined) { %>
-              <tr>
-                <th>Experience</th>
-                <td><%= application.years_experience %> year<%= application.years_experience === 1 ? '' : 's' %></td>
-              </tr>
-            <% } %>
             <tr>
               <th>Status</th>
               <td>
@@ -150,21 +210,33 @@
       <div class="next-steps">
         <h3 class="next-steps-title">What happens next?</h3>
         <ol class="next-steps-list">
-          <% if (isPendingPayment) { %>
+          <% if (isQuoteBased) { %>
             <li>
-              <strong>Complete payment</strong> — use the reference number above if you need to return later.
+              <strong>Quote</strong> — our team will contact you with a tailored membership fee based on your organization.
             </li>
-          <% } %>
-          <li>
-            <strong>Review</strong> — our membership team will review your application. This usually takes 3–5 business days.
-          </li>
-          <li>
-            <strong>Decision</strong> — you'll receive an email notification with the outcome.
-          </li>
-          <% if (application.status !== 'rejected') { %>
             <li>
-              <strong>Welcome package</strong> — if approved, you'll receive your membership certificate and next steps.
+              <strong>Review</strong> — once payment is agreed, your application will be reviewed.
             </li>
+            <li>
+              <strong>Decision</strong> — you'll receive an email with the outcome.
+            </li>
+          <% } else { %>
+            <% if (isPendingPayment) { %>
+              <li>
+                <strong>Complete payment</strong> — use the reference number above if you need to return later.
+              </li>
+            <% } %>
+            <li>
+              <strong>Review</strong> — our membership team will review your application. This usually takes 3–5 business days.
+            </li>
+            <li>
+              <strong>Decision</strong> — you'll receive an email notification with the outcome.
+            </li>
+            <% if (application.status !== 'rejected') { %>
+              <li>
+                <strong>Welcome package</strong> — if approved, you'll receive your membership certificate and member portal access.
+              </li>
+            <% } %>
           <% } %>
         </ol>
       </div>

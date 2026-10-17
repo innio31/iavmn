@@ -4,39 +4,54 @@ A dynamic, admin-managed website for the Institute of Assets & Value Management 
 
 Built with **Node.js + Express + EJS + MySQL**. Content is fully manageable from an admin dashboard — no code changes needed to update the site.
 
+- **Live site:** https://iavmn.org.ng
+- **Admin:** https://iavmn.org.ng/admin
+- **Member portal:** https://iavmn.org.ng/member/login
+
 ---
 
 ## What This App Does
 
 ### Public site
 
-- **Home page** — dynamic hero slider, about section, membership cards, testimonials, latest news
+- **Home page** — hero carousel, membership cards, testimonials, latest news
 - **Council Members** — listing with photos and individual profile pages
 - **Membership Tiers** — Student, Associate, Corporate, Fellow (fully configurable)
-- **Membership Applications** — online form with CV + passport photo upload, unique reference generation, and **Paystack payment integration**
-- **News & Updates** — blog with cover images, excerpts, and pagination
-- **FAQ** — accordion page with searchable questions
-- **Contact** — form with admin notification + auto-acknowledgement email
-- **Newsletter** — footer subscribe form with welcome email and unsubscribe link
-- **Editable pages** — About, Privacy Policy, Terms, Vision, etc.
-- **SEO-ready** — meta tags, Open Graph, sitemap.xml, robots.txt
+- **Membership Applications** — online form with CV + passport photo upload
+- **Paystack Payments** — secure online payments
+- **Member Portal** — login, profile, payments history, certificate download
+- **Certificate PDF** — auto-generated with QR code
+- **Public Verification** — `/verify/:memberNumber` — anyone can check
+- **News & Updates** — blog with pagination and share buttons
+- **FAQ** — accordion page
+- **Contact** — form with email notifications
+- **Newsletter** — subscribe, welcome email, one-click unsubscribe
+- **Site-wide Search** — live suggestions across all content
+- **PWA installable** — can be added to a phone's home screen
+- **SEO-complete** — meta, OG, Twitter Cards, JSON-LD, sitemap, robots
 
 ### Admin dashboard
 
-Everything below is manageable from `/admin`:
+Everything manageable at `/admin`:
 
-- **Settings** — site name, contact details, social links, email config, Paystack toggle
-- **Hero Slides** — carousel with image upload and ordering
-- **Membership Tiers** — name, fee, currency, icon, description, publish status
-- **Council Members** — profiles with photo, bio, LinkedIn, email
-- **Pages** — editable content pages with optional "show in menu" toggle
-- **FAQs** — questions and answers
-- **Testimonials** — quotes with optional author photo
-- **Posts** — news/blog with cover image, excerpt, publish scheduling
-- **Applications** — review, approve/reject, view CVs and photos
-- **Subscribers** — newsletter list with CSV export
-- **Contact Messages** — inbox with read/unread, reply-by-email
-- **Admin Users** — multi-user with role-based access (super_admin, admin, editor, membership_officer)
+- Dashboard with live stats and activity feed
+- Settings (site name, contact, social, email, payment, analytics, SEO, footer, system)
+- Hero Slides, Membership Tiers, Council Members, Pages, FAQs, Testimonials, Posts
+- Applications inbox with filters and review workflow
+- Members management with tier/status/expiry/password controls
+- Newsletter compose and send (with batching)
+- Subscribers list with CSV export
+- Contact Messages inbox
+- Admin Users with role-based access
+
+### Roles
+
+| Role | Permissions |
+|---|---|
+| `super_admin` | Everything + manage other admin users |
+| `admin` | Everything except user management |
+| `editor` | Content only (pages, posts, hero, tiers, council, FAQs, testimonials) |
+| `membership_officer` | Review applications + view members |
 
 ---
 
@@ -44,7 +59,7 @@ Everything below is manageable from `/admin`:
 
 | Layer | Technology |
 |---|---|
-| Runtime | Node.js 18+ |
+| Runtime | Node.js 18+ (production: 20.x) |
 | Framework | Express 4 |
 | Templating | EJS with express-ejs-layouts |
 | Database | MySQL 8 / MariaDB 10.4+ |
@@ -55,7 +70,9 @@ Everything below is manageable from `/admin`:
 | File uploads | multer |
 | Email | Nodemailer (SMTP) |
 | Payments | Paystack |
-| Security | Helmet, parameterized queries, CSRF-adjacent protections |
+| PDF generation | pdfkit |
+| QR codes | qrcode |
+| Security | Helmet, parameterized queries |
 
 ---
 
@@ -63,45 +80,60 @@ Everything below is manageable from `/admin`:
 
 ```
 iavmn/
-├── server.js                 # App entry point (no routes, no logic)
+├── server.js                 # App entry point (setup only — no routes)
 ├── package.json
 ├── .env                      # Secrets (never commit)
-├── .env.example              # Template
-├── README.md
-├── DEPLOYMENT.md
+├── README.md                 # This file
+├── DEPLOYMENT.md             # Deployment guide
+├── ADMIN-MANUAL.md           # Manual for the institute
+├── HANDOVER.md               # Launch handover summary
 ├── database/
-│   ├── schema.sql            # Full DB schema
-│   ├── seed-settings.sql     # Default settings
+│   ├── schema.sql
+│   ├── seed-settings.sql
 │   └── migrations/
-│       └── 001-add-menu-fields-to-pages.sql
+│       ├── 001-add-menu-fields-to-pages.sql
+│       ├── 002-create-members-table.sql
+│       ├── 003-add-reset-token-to-users.sql
+│       ├── 004-create-newsletter-sends-table.sql
+│       └── 005-add-analytics-and-seo-settings.sql
 ├── public/
 │   ├── css/
-│   │   ├── theme.css         # Public styles
-│   │   ├── admin.css         # Admin styles
-│   │   └── auth.css          # Login / setup styles
+│   │   ├── theme.css                # Public styles
+│   │   ├── admin.css                # Admin styles
+│   │   ├── auth.css                 # Login/setup styles
+│   │   ├── member.css               # Member portal styles
+│   │   └── responsive-helpers.css   # hide-mobile / show-mobile utilities
+│   ├── js/
+│   │   ├── admin-events.js          # Admin polling notifications
+│   │   ├── search-overlay.js        # Header search overlay
+│   │   └── pwa-install.js           # PWA install button handler
+│   ├── sw.js                        # Service worker (PWA)
+│   ├── site.webmanifest             # PWA manifest
 │   ├── robots.txt
+│   ├── favicon.ico
 │   └── uploads/
-│       ├── branding/         # Logo, favicon
-│       ├── hero/             # Hero slider images
-│       ├── council/          # Council member photos
-│       ├── testimonials/     # Testimonial author photos
-│       ├── posts/            # Blog cover images
-│       └── applications/     # Applicant CVs and photos
+│       ├── branding/                # Logo, favicon, icons
+│       ├── hero/
+│       ├── council/
+│       ├── testimonials/
+│       ├── posts/
+│       └── applications/            # Applicant CVs and photos
 └── src/
-    ├── db.js                 # MySQL pool + query helpers
-    ├── routes.js             # All routes
-    ├── controllers/          # Request handlers
-    ├── models/               # Database access (no logic)
-    ├── middleware/           # Auth, flash, uploads, settings, counts
-    ├── services/             # Mailer, Paystack
-    ├── utils/                # File cleanup
+    ├── db.js                       # MySQL pool
+    ├── routes.js                   # All routes
+    ├── controllers/                # Request handlers
+    ├── models/                     # Database access
+    ├── middleware/                 # Auth, flash, uploads, settings
+    ├── services/                   # Mailer, Paystack, eventBus
+    ├── utils/                      # File cleanup
     └── views/
-        ├── layouts/          # main, admin, auth
-        ├── partials/         # header, footer
-        ├── errors/           # 403, 404, 500
-        ├── admin/            # Admin views per module
-        ├── emails/           # Email templates
-        └── *.ejs             # Public pages
+        ├── layouts/                # main, admin, auth, member
+        ├── partials/               # header, footer
+        ├── errors/                 # 403, 404, 500
+        ├── emails/                 # Email templates
+        ├── admin/                  # Admin views
+        ├── members/                # Member portal views
+        └── *.ejs                   # Public pages
 ```
 
 ---
@@ -111,7 +143,7 @@ iavmn/
 ### Prerequisites
 
 - **Node.js 18+** — https://nodejs.org
-- **MySQL 8+** (or MariaDB 10.4+) — use XAMPP on Windows for simplicity: https://www.apachefriends.org
+- **MySQL 8+** (or MariaDB 10.4+) — XAMPP recommended on Windows
 - **Git**
 
 ### Setup
@@ -132,7 +164,7 @@ iavmn/
    - Create a database named `impactdi_iavmn`
    - Import `database/schema.sql`
    - Import `database/seed-settings.sql`
-   - Import `database/migrations/001-add-menu-fields-to-pages.sql`
+   - Import all 5 files in `database/migrations/` in order
 
 4. **Create `.env`**
    ```bash
@@ -165,7 +197,7 @@ iavmn/
 | `npm run dev` | Start with file watching (auto-restart on `.js` changes) |
 | `npm start` | Start once (production) |
 
-**Note:** `.ejs` files reload on every request automatically. `.js` files need a restart (which `npm run dev` handles).
+**Note:** `.ejs` files reload on every request. `.js` files need a restart (`npm run dev` handles this).
 
 ---
 
@@ -193,132 +225,143 @@ Full reference — see `.env.example`:
 | `MAIL_PASS` | Email password |
 | `MAIL_FROM_NAME` | Display name for sent emails |
 | `MAIL_FROM_EMAIL` | From address |
-| `PAYSTACK_PUBLIC_KEY` | Paystack public key (`pk_test_...` or `pk_live_...`) |
-| `PAYSTACK_SECRET_KEY` | Paystack secret key (`sk_test_...` or `sk_live_...`) |
+| `PAYSTACK_PUBLIC_KEY` | `pk_test_*` or `pk_live_*` |
+| `PAYSTACK_SECRET_KEY` | `sk_test_*` or `sk_live_*` |
 | `UPLOAD_DIR` | Upload folder (default `public/uploads`) |
 | `MAX_UPLOAD_MB` | Max upload size (default 5) |
 
 ### Dev-mode fallbacks
 
-- **No SMTP configured** → emails print to the console instead of sending
+- **No SMTP configured** → emails print to the console
 - **No Paystack keys** → a mock checkout page simulates successful payments
-- **No favicon** → the browser shows the default
+- **No favicon** → browser shows default
 
-This means the app **works out of the box** with just a database. Real email and payments only need the keys.
-
----
-
-## Editing Content
-
-**Everything is managed from the admin dashboard at `/admin`.**
-
-You should never need to edit files to change content. Instead:
-
-- Change the site name → `/admin/settings` → General tab
-- Add a hero slide → `/admin/hero/new`
-- Update a council member → `/admin/council`
-- Publish a news post → `/admin/posts/new`
-- Review an application → `/admin/applications`
-- See unread messages → `/admin/messages`
-
-Uploads (images, CVs) are handled from the browser. No FTP, no file paths.
+This means the app **works out of the box** with just a database.
 
 ---
 
-## Roles & Permissions
+## Production Notes (Important)
 
-| Role | Can do |
-|---|---|
-| `super_admin` | Everything + manage other admin users |
-| `admin` | Everything except user management |
-| `editor` | Manage content (pages, posts, hero, tiers, council, FAQs, testimonials) |
-| `membership_officer` | Review applications + view members; no content editing |
+Several production gotchas were hit during deployment and are now fixed in the code. Documented here so future developers understand why certain lines exist:
 
-New admin users are created only by a super_admin from `/admin/users` *(feature: coming soon — currently you can create admins via the setup flow or a database insert)*.
+### 1. `app.set('trust proxy', 1)` in `server.js`
 
----
+HostAfrica runs LiteSpeed/nginx in front of the Node app over plain HTTP. Without this setting, Express thinks requests are HTTP even when the visitor is on HTTPS, so **Secure session cookies are never set** and login fails silently.
 
-## Email Setup
+### 2. `proxy: true` in the session config
 
-The app uses **Nodemailer with SMTP**. Any SMTP provider works:
+Belt-and-braces with `trust proxy` — tells express-session to trust the `X-Forwarded-Proto` header.
 
-- **HostAfrica email** — `mail.yourdomain.com`, port 465 SSL
-- **Zoho Mail** — `smtp.zoho.com`, port 465 SSL (free tier available)
-- **Gmail / Google Workspace** — `smtp.gmail.com`, port 587, app-specific password
-- **SendGrid / Mailgun / Postmark** — dedicated transactional email services
+### 3. Polling instead of SSE for admin notifications
 
-Set `MAIL_HOST`, `MAIL_PORT`, `MAIL_SECURE`, `MAIL_USER`, `MAIL_PASS` in `.env`.
+The original implementation used Server-Sent Events. **HostAfrica's LiteSpeed proxy buffers SSE responses** — the browser received the initial headers but no event data ever flowed through.
 
-### What gets emailed
+We switched to **polling every 15 seconds** against `/admin/events/poll`. It works reliably on any shared host. No long-lived connections needed.
 
-| Event | Recipient |
-|---|---|
-| Contact form submitted | Admin + sender acknowledgement |
-| Newsletter subscribe | Welcome email to the subscriber |
-| Membership application submitted | Admin + applicant |
-| Payment successful | Admin + applicant |
-| Application approved/rejected | Applicant |
+### 4. `appUrl` injected into email templates from `mailer.js`
 
-All email sending is wrapped in try/catch — user-facing actions **never** fail because email failed.
+EJS templates run in a sandbox and **do not have access to `process.env`**. The original templates read `process.env.APP_URL` and fell back to `http://localhost:3000`, so all email links pointed to localhost.
 
-### Deliverability
+Fixed by injecting `appUrl` into the render data in `src/services/mailer.js`. Templates now use `appUrl || (settings && settings.app_url) || 'https://iavmn.org.ng'`.
 
-For best deliverability, set up **SPF**, **DKIM**, and **DMARC** records in cPanel → **Email Deliverability**. Without them, some emails may land in spam on first send.
+### 5. `public/favicon.ico` at the root
 
----
+Browsers request `/favicon.ico` at the domain root regardless of any `<link rel="icon">` tag. Without a file there, you get a 404 on every page. We placed a copy at `public/favicon.ico`.
 
-## Paystack Setup
+### 6. `public/css/responsive-helpers.css`
 
-1. Create a Paystack account: https://paystack.com
-2. Get API keys: **Settings → API Keys & Webhooks**
-3. Add to `.env`:
-   ```env
-   PAYSTACK_PUBLIC_KEY=pk_test_...
-   PAYSTACK_SECRET_KEY=sk_test_...
-   ```
-4. Set webhook URL in Paystack dashboard:
-   ```
-   https://yourdomain.com/webhooks/paystack
-   ```
-5. Test with Paystack's test cards before going live
+Contains the `.hide-mobile` and `.show-mobile` rules used throughout admin tables and cards. Loaded in every layout — **do not remove this link**.
 
-When keys are absent, the app uses a **mock checkout page** so you can still test the full flow.
+### 7. Service worker caching rules
+
+`public/sw.js` deliberately does **not** cache:
+- `/admin/*`
+- `/member/*`
+- `/login`, `/setup`, `/forgot-password`
+- `/contact` (POST)
+- `/search`
+- `/webhooks/*`
+- `/membership/apply/*`
+
+Public HTML uses network-first with cache fallback. Static assets use cache-first with revalidation.
+
+### 8. Session cookie name is `iavmn.sid`
+
+If you ever need to clear sessions for all users, delete rows from the `user_sessions` table in MySQL.
 
 ---
 
-## Deployment
+## Database Migrations
 
-See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for a complete HostAfrica deployment guide, including:
+When you add a new column or table, create a new file in `database/migrations/` numbered sequentially:
 
-- MySQL setup in cPanel
-- Node.js app creation
-- Environment variables
-- File permissions
-- SSL, backups, cron
-- Troubleshooting
+```
+006-your-change.sql
+007-another-change.sql
+```
+
+Each migration should be **idempotent** (safe to re-run) — check for column existence before `ALTER TABLE`.
+
+**Note:** There is no migration runner. Migrations are applied manually via phpMyAdmin or the SQL tab. This is intentional — it keeps deployment simple and auditable.
+
+---
+
+## Paystack Integration
+
+- **Test mode**: `pk_test_*` and `sk_test_*` in `.env`
+- **Live mode**: `pk_live_*` and `sk_live_*` — swap on the server and restart
+- **Webhook URL** in Paystack dashboard: `https://iavmn.org.ng/webhooks/paystack`
+- **Mock checkout** appears automatically when keys are placeholders
+
+Flow:
+1. Applicant submits form → application saved with unique reference
+2. Redirect to `/membership/apply/:ref/pay`
+3. `initializeTransaction` → user pays on Paystack
+4. Callback → `verifyTransaction` → update DB → emails sent
+5. Webhook provides a secondary confirmation (belt-and-braces)
+
+---
+
+## Email System
+
+- Uses **Nodemailer** with explicit SMTP
+- All email sending is wrapped in `try/catch` — user-facing actions **never** fail because email failed
+- Templates in `src/views/emails/` are rendered by `renderEmail()` in `mailer.js`
+- `appUrl` is injected into every template — templates should use `appUrl` (not `process.env`)
+
+**Templates:**
+- `contact-notification.ejs` — to admin
+- `contact-acknowledgement.ejs` — to sender
+- `subscriber-welcome.ejs` — newsletter welcome
+- `application-received.ejs` — to applicant
+- `application-admin-notification.ejs` — to admin
+- `application-decision.ejs` — approved/rejected
+- `payment-confirmed.ejs` — receipt
+- `payment-admin-notification.ejs` — to admin
+- `member-welcome.ejs` — approval + set password
+- `member-password-reset.ejs` — password reset
+- `admin-password-reset.ejs` — admin password reset
+- `newsletter.ejs` — campaign wrapper
 
 ---
 
 ## Security Notes
 
-- **Passwords** — hashed with bcrypt (12 rounds), never stored plaintext
-- **SQL** — all queries use parameterized statements (`?` placeholders), no string concatenation
-- **Sessions** — server-side, stored in MySQL, HTTP-only cookies, regenerated on login
-- **Role checks** — server-side via middleware; hidden links are never trusted
+- **Passwords** — bcrypt, 12 rounds
+- **SQL** — parameterized queries only (`?` placeholders)
+- **Sessions** — server-side, MySQL-backed, HTTP-only, regenerated on login
+- **Role checks** — server-side middleware; hidden links are never trusted
 - **Uploads** — MIME-type validated, filenames sanitized, size-limited
-- **Path traversal** — file deletion utility refuses paths outside `public/uploads/`
-- **CSRF-adjacent** — admin routes require login + role; forms use POST + session (safe against most CSRF)
-- **Emails** — SMTP credentials only server-side; never exposed to browser
+- **Path traversal** — file cleanup refuses paths outside `public/uploads/`
+- **CSRF-adjacent** — admin routes require login + role; POST forms + session
 
 ### Known workarounds
 
-- **HostAfrica's mail certificate is expired** — `mailer.js` uses `rejectUnauthorized: false` for SMTP. Remove this once the certificate is renewed. Documented in `.env` comments.
+- **HostAfrica's mail SSL certificate** — `mailer.js` uses `rejectUnauthorized: false` for SMTP. Remove when HostAfrica renews the certificate.
 
 ---
 
-## Backup & Restore
-
-### Backup
+## Backups
 
 ```bash
 # Database
@@ -328,13 +371,6 @@ mysqldump -u DB_USER -p DB_NAME > backup-$(date +%Y%m%d).sql
 tar czf uploads-$(date +%Y%m%d).tar.gz public/uploads/
 ```
 
-### Restore
-
-```bash
-mysql -u DB_USER -p DB_NAME < backup.sql
-tar xzf uploads-backup.tar.gz
-```
-
 See `DEPLOYMENT.md` for automated cron-based backups.
 
 ---
@@ -342,47 +378,53 @@ See `DEPLOYMENT.md` for automated cron-based backups.
 ## Troubleshooting
 
 ### Server won't start
-
 - Run `node server.js` directly and read the error
-- Check for missing `.env` values
+- Check `.env` values
 - Verify MySQL is running and the database exists
 
-### Emails not sending
+### Login fails silently
+- Check `app.set('trust proxy', 1)` is present in `server.js`
+- Check `Secure` cookies are being set (DevTools → Network → POST /login → Response Headers → Set-Cookie)
+- Clear cookies for the site and try again
 
-- Test with: `node -e "import('./src/services/mailer.js').then(m => m.sendMail({ to: 'you@example.com', subject: 'Test', html: '<p>Hi</p>' }))"`
+### Emails not sending
+- Test with:
+  ```bash
+  node -e "import('./src/services/mailer.js').then(m => m.sendMail({ to: 'you@example.com', subject: 'Test', html: '<p>Hi</p>' }))"
+  ```
 - If it prints to console → SMTP not configured (check `.env`)
-- If it errors → check the error message (auth, timeout, etc.)
+
+### Emails have wrong URLs
+- The template should use `appUrl` (injected by `mailer.js`) not `process.env.APP_URL`
+- Verify `.env` has `APP_URL=https://iavmn.org.ng`
+
+### Real-time pill says "Connecting" forever
+- The polling endpoint is `/admin/events/poll`
+- Check Network tab for a request to that URL
+- Should return 200 with JSON
 
 ### Uploads fail
-
 - Check `public/uploads/` exists and is writable
-- Check the file type is allowed (JPG, PNG, WEBP, GIF, PDF, DOC, DOCX)
-- Check the file size is under 5 MB
-
-### Sessions log out too fast
-
-- Check `SESSION_MAX_AGE_MS` is a reasonable value (86400000 = 24 hours)
-- Verify `user_sessions` table exists in the DB
+- Check file type and size (max 5 MB)
+- Check disk space: `df -h ~`
 
 ### Paystack not working
-
 - Visit `/admin/paystack-test` to see if keys are loaded
-- Check the webhook URL is set in the Paystack dashboard
-- Try the test card: `4084 0840 8408 4081`, CVV `408`, Expiry `12/26`
+- Check webhook URL in Paystack dashboard
+- Test card: `4084 0840 8408 4081`, CVV `408`, Expiry `12/26`
+
+---
+
+## Deployment
+
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for the complete HostAfrica deployment guide.
 
 ---
 
 ## Support & Contact
 
-For issues with this app:
-
 - **Developer:** Emmanuel — Impact Digital (Academy & Services)
 - **Website:** https://impactdigitalacademy.com.ng
-
-For issues with hosting, email, or payments:
-
-- **HostAfrica:** https://hostafrica.com/support
-- **Paystack:** https://paystack.com/support
 
 ---
 
@@ -392,5 +434,5 @@ Proprietary — © 2026 Institute of Assets & Value Management Nigeria.
 
 ---
 
-**Version:** 1.0.0
-**Last updated:** 2026-10-04
+**Version:** 2.0.0
+**Last updated:** October 2026

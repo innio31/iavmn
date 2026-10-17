@@ -14,8 +14,13 @@
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-  // Common currency codes
   const currencies = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR'];
+
+  // Helper to check if this is a "quote-based" tier (both fees are 0)
+  const isQuoteBased = Number(tier.fee_amount || 0) === 0 && Number(tier.registration_fee || 0) === 0;
+
+  // Helper to compute the total
+  const totalAmount = Number(tier.fee_amount || 0) + Number(tier.registration_fee || 0);
 %>
 
 <div class="page-header">
@@ -88,7 +93,7 @@
     <textarea
       id="description"
       name="description"
-      rows="8"
+      rows="6"
       placeholder="Who should join, requirements, benefits..."><%= tier.description || '' %></textarea>
     <span class="form-hint">Shown on the tier detail page. Line breaks are preserved.</span>
   </div>
@@ -121,9 +126,38 @@
     <span class="form-hint">Pick from above, or paste your own emoji/character.</span>
   </div>
 
-  <div class="form-row form-row-split">
+  <%# ─── FEES SECTION ─── %>
+  <hr class="admin-divider">
+  <h3 class="admin-section-heading">Fees</h3>
+
+  <p class="text-muted" style="margin: 0 0 18px; font-size: 14px; line-height: 1.6;">
+    Every tier has two fees:
+    <strong>Registration</strong> (the application form, typically the same for all tiers)
+    and <strong>Membership</strong> (the annual fee specific to this tier).
+    The total is what the applicant pays online.
+    <br>
+    <br>
+    <strong>To make this tier "quote-based"</strong> (no online payment — applicant gets contacted by your team),
+    set <em>both</em> fees to 0.
+  </p>
+
+  <div class="form-row form-row-split-fees">
     <div>
-      <label for="fee_amount">Fee amount</label>
+      <label for="registration_fee">Registration fee</label>
+      <input
+        type="number"
+        id="registration_fee"
+        name="registration_fee"
+        value="<%= tier.registration_fee !== undefined && tier.registration_fee !== null ? tier.registration_fee : 20000 %>"
+        min="0"
+        step="0.01"
+        inputmode="decimal"
+        oninput="updateTotal()">
+      <span class="form-hint">Fixed form/registration charge. Typically 20,000 for all tiers.</span>
+    </div>
+
+    <div>
+      <label for="fee_amount">Membership fee</label>
       <input
         type="number"
         id="fee_amount"
@@ -131,8 +165,9 @@
         value="<%= tier.fee_amount !== undefined && tier.fee_amount !== null ? tier.fee_amount : 0 %>"
         min="0"
         step="0.01"
-        inputmode="decimal">
-      <span class="form-hint">Use 0 for free tiers.</span>
+        inputmode="decimal"
+        oninput="updateTotal()">
+      <span class="form-hint">Annual membership fee for this tier.</span>
     </div>
 
     <div>
@@ -145,6 +180,29 @@
     </div>
   </div>
 
+  <div class="tier-total-box" id="totalBox">
+    <div class="tier-total-row">
+      <span class="tier-total-label">Registration</span>
+      <span class="tier-total-value" id="totalRegistration">₦ 0</span>
+    </div>
+    <div class="tier-total-row">
+      <span class="tier-total-label">Membership</span>
+      <span class="tier-total-value" id="totalMembership">₦ 0</span>
+    </div>
+    <div class="tier-total-row tier-total-row-bold">
+      <span class="tier-total-label">Total applicant pays</span>
+      <span class="tier-total-value" id="totalGrand">₦ 0</span>
+    </div>
+  </div>
+
+  <div class="tier-quote-notice" id="quoteNotice" style="display: none;">
+    <strong>Quote-based tier.</strong>
+    With both fees at zero, the application will be submitted without online payment.
+    Your team will be notified and can contact the applicant with a custom quote.
+  </div>
+
+  <hr class="admin-divider">
+
   <div class="form-row">
     <label for="sort_order">Display order</label>
     <input
@@ -155,7 +213,7 @@
       min="0"
       max="9999"
       inputmode="numeric">
-    <span class="form-hint">Lower numbers appear first (e.g. Student = 1, Associate = 2).</span>
+    <span class="form-hint">Lower numbers appear first (e.g. Student = 1, Associate = 3).</span>
   </div>
 
   <div class="form-row">
@@ -179,7 +237,6 @@
 </form>
 
 <script>
-  // Auto-suggest slug
   function suggestSlug() {
     const nameInput = document.getElementById('name');
     const slugInput = document.getElementById('slug');
@@ -206,7 +263,6 @@
     }
   });
 
-  // Icon picker
   function pickIcon(icon) {
     document.getElementById('icon').value = icon;
     updateIconPicker();
@@ -218,4 +274,37 @@
       btn.classList.toggle('selected', btn.dataset.icon === current);
     });
   }
+
+  // ─── Live total calculation ───
+  function formatMoney(amount, currency) {
+    const symbols = {
+      NGN: '₦', USD: '$', GBP: '£', EUR: '€', GHS: '₵', KES: 'KSh', ZAR: 'R',
+    };
+    const sym = symbols[currency] || currency + ' ';
+    return sym + ' ' + Number(amount || 0).toLocaleString();
+  }
+
+  function updateTotal() {
+    const reg = Number(document.getElementById('registration_fee').value) || 0;
+    const mem = Number(document.getElementById('fee_amount').value) || 0;
+    const currency = document.getElementById('currency').value;
+    const total = reg + mem;
+
+    document.getElementById('totalRegistration').textContent = formatMoney(reg, currency);
+    document.getElementById('totalMembership').textContent = formatMoney(mem, currency);
+    document.getElementById('totalGrand').textContent = formatMoney(total, currency);
+
+    const quoteNotice = document.getElementById('quoteNotice');
+    if (total === 0) {
+      quoteNotice.style.display = 'block';
+    } else {
+      quoteNotice.style.display = 'none';
+    }
+  }
+
+  // Initialize on page load
+  updateTotal();
+
+  // Also update when currency changes
+  document.getElementById('currency').addEventListener('change', updateTotal);
 </script>

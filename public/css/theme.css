@@ -4327,3 +4327,165 @@ body.search-overlay-active {
     min-height: 38px;
   }
 }
+/* ─── Apply form: fee breakdown ─────────────────────── */
+.apply-fee-breakdown {
+  background: #f7faf9;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+.apply-fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--text);
+  border-bottom: 1px solid var(--border-light);
+}
+.apply-fee-row:last-child {
+  border-bottom: none;
+}
+.apply-fee-label {
+  color: var(--text-muted);
+}
+.apply-fee-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.apply-fee-row-total {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 2px solid var(--primary);
+  border-bottom: none;
+  font-size: 16px;
+  font-weight: 700;
+}
+.apply-fee-row-total .apply-fee-label {
+  color: var(--primary);
+  font-weight: 700;
+}
+.apply-fee-row-total .apply-fee-value {
+  color: var(--primary);
+  font-size: 18px;
+}
+
+/* ─── Quote-based notice ────────────────────────────── */
+.apply-quote-notice {
+  background: #fff3cd;
+  border: 1px solid #ffeeba;
+  color: #856404;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.apply-quote-notice strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 640px) {
+  .apply-fee-breakdown { padding: 14px 16px; }
+  .apply-fee-row { font-size: 13px; padding: 7px 0; }
+  .apply-fee-row-total { font-size: 15px; }
+  .apply-fee-row-total .apply-fee-value { font-size: 16px; }
+}
+/* ─── Payment page: fee breakdown ───────────────────── */
+.pay-breakdown {
+  background: #f7faf9;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 22px;
+}
+.pay-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+.pay-breakdown-row:last-child {
+  border-bottom: none;
+}
+.pay-breakdown-label {
+  color: var(--text-muted);
+}
+.pay-breakdown-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.pay-breakdown-row-total {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 2px solid var(--primary);
+  border-bottom: none;
+  font-size: 16px;
+  font-weight: 700;
+}
+.pay-breakdown-row-total .pay-breakdown-label {
+  color: var(--primary);
+}
+.pay-breakdown-row-total .pay-breakdown-value {
+  color: var(--primary);
+  font-size: 18px;
+}
+
+/* ─── Success page: fee breakdown ───────────────────── */
+.success-fee-breakdown {
+  background: #f7faf9;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+.success-fee-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+.success-fee-row:last-child {
+  border-bottom: none;
+}
+.success-fee-label {
+  color: var(--text-muted);
+}
+.success-fee-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.success-fee-row-total {
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 2px solid var(--primary);
+  border-bottom: none;
+  font-size: 16px;
+  font-weight: 700;
+}
+.success-fee-row-total .success-fee-label {
+  color: var(--primary);
+}
+.success-fee-row-total .success-fee-value {
+  color: var(--primary);
+  font-size: 18px;
+}
+
+@media (max-width: 640px) {
+  .pay-breakdown { padding: 12px 14px; }
+  .pay-breakdown-row { font-size: 13px; padding: 7px 0; }
+  .pay-breakdown-row-total { font-size: 15px; }
+  .pay-breakdown-row-total .pay-breakdown-value { font-size: 16px; }
+
+  .success-fee-breakdown { padding: 12px 14px; }
+  .success-fee-row { font-size: 13px; padding: 7px 0; }
+  .success-fee-row-total { font-size: 15px; }
+  .success-fee-row-total .success-fee-value { font-size: 16px; }
+}

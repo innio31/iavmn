@@ -1,8 +1,27 @@
+<%
+  const currencySymbol = (c) => {
+    if (c === 'NGN') return '₦';
+    if (c === 'USD') return '$';
+    if (c === 'GBP') return '£';
+    if (c === 'EUR') return '€';
+    if (c === 'GHS') return '₵';
+    if (c === 'KES') return 'KSh';
+    if (c === 'ZAR') return 'R';
+    return c + ' ';
+  };
+
+  const fmtMoney = (amount, currency) => {
+    const sym = currencySymbol(currency || 'NGN');
+    return sym + ' ' + Number(amount || 0).toLocaleString();
+  };
+%>
+
 <div class="page-header">
   <div>
     <h1 class="page-title">Membership Tiers</h1>
     <p class="page-subtitle">
-      Manage membership categories. <strong>Order</strong> controls display order (lower = first).
+      Manage membership categories. Each tier has two fees: <strong>Registration</strong> (form) + <strong>Membership</strong> (annual).
+      Applicants pay the total online.
     </p>
   </div>
   <div class="page-actions">
@@ -24,9 +43,11 @@
     <table class="admin-table">
       <thead>
         <tr>
-          <th style="width: 60px;">Icon</th>
+          <th style="width: 50px;">Icon</th>
           <th>Name</th>
-          <th style="width: 130px;">Fee</th>
+          <th style="width: 140px;">Registration</th>
+          <th style="width: 140px;">Membership</th>
+          <th style="width: 140px;">Total</th>
           <th style="width: 70px;">Order</th>
           <th style="width: 100px;">Status</th>
           <th style="width: 240px;">Actions</th>
@@ -34,6 +55,12 @@
       </thead>
       <tbody>
         <% tiers.forEach((t) => { %>
+          <%
+            const reg = Number(t.registration_fee || 0);
+            const mem = Number(t.fee_amount || 0);
+            const total = reg + mem;
+            const isQuoteBased = total === 0;
+          %>
           <tr>
             <td>
               <span class="tier-icon-cell"><%= t.icon || '—' %></span>
@@ -46,7 +73,17 @@
               <br><span class="text-muted" style="font-size: 12px;">/membership/<%= t.slug %></span>
             </td>
             <td>
-              <strong><%= t.currency %> <%= Number(t.fee_amount).toLocaleString() %></strong>
+              <span class="tier-fee-cell"><%= fmtMoney(reg, t.currency) %></span>
+            </td>
+            <td>
+              <span class="tier-fee-cell"><%= fmtMoney(mem, t.currency) %></span>
+            </td>
+            <td>
+              <% if (isQuoteBased) { %>
+                <span class="badge badge-warning">Quote-based</span>
+              <% } else { %>
+                <strong class="tier-total-cell"><%= fmtMoney(total, t.currency) %></strong>
+              <% } %>
             </td>
             <td><%= t.sort_order %></td>
             <td>
@@ -82,6 +119,12 @@
   <%# ─── Mobile: cards ─── %>
   <div class="show-mobile">
     <% tiers.forEach((t) => { %>
+      <%
+        const reg = Number(t.registration_fee || 0);
+        const mem = Number(t.fee_amount || 0);
+        const total = reg + mem;
+        const isQuoteBased = total === 0;
+      %>
       <div class="admin-card">
         <div class="mobile-card-head">
           <% if (t.icon) { %>
@@ -93,7 +136,6 @@
               <div class="text-muted" style="font-size: 13px;"><%= t.short_description %></div>
             <% } %>
             <div class="mobile-card-meta">
-              <span><%= t.currency %> <%= Number(t.fee_amount).toLocaleString() %></span>
               <span>Order: <%= t.sort_order %></span>
               <% if (t.is_active) { %>
                 <span class="badge badge-success">Active</span>
@@ -101,6 +143,25 @@
                 <span class="badge badge-muted">Hidden</span>
               <% } %>
             </div>
+          </div>
+        </div>
+
+        <div class="mobile-tier-fee-box">
+          <div class="mobile-tier-fee-row">
+            <span>Registration</span>
+            <strong><%= fmtMoney(reg, t.currency) %></strong>
+          </div>
+          <div class="mobile-tier-fee-row">
+            <span>Membership</span>
+            <strong><%= fmtMoney(mem, t.currency) %></strong>
+          </div>
+          <div class="mobile-tier-fee-row mobile-tier-fee-row-bold">
+            <span>Total</span>
+            <% if (isQuoteBased) { %>
+              <span class="badge badge-warning">Quote-based</span>
+            <% } else { %>
+              <strong><%= fmtMoney(total, t.currency) %></strong>
+            <% } %>
           </div>
         </div>
 

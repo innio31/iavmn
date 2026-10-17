@@ -1,6 +1,8 @@
 # IAVMN — Deployment Guide (HostAfrica)
 
-This guide walks you through deploying the IAVMN web app to HostAfrica's shared hosting with Node.js support.
+Complete guide to deploying the IAVMN web app to HostAfrica's shared hosting with Node.js support.
+
+**Verified working on:** HostAfrica shared hosting, cPanel with LiteSpeed/nginx reverse proxy, Node.js 20.
 
 ---
 
@@ -10,9 +12,9 @@ Before you start, make sure you have:
 
 1. **HostAfrica hosting account** with Node.js support enabled
 2. **cPanel access** (username + password)
-3. **SSH access** — HostAfrica typically supports SSH on request; if not, you'll use cPanel's Terminal
-4. **Git repository** with the code (GitHub, GitLab, or Bitbucket)
-5. **Domain DNS** pointing to HostAfrica
+3. **SSH/Terminal access** via cPanel
+4. **Git repository** on GitHub (or GitLab / Bitbucket)
+5. **Domain DNS** pointing to the HostAfrica nameservers
 6. **Paystack account** with test + live keys
 7. **Email account** created in cPanel (for SMTP)
 
@@ -20,17 +22,32 @@ Before you start, make sure you have:
 
 ## Step 1: Prepare Your Local Copy
 
-Before deploying, make sure your `.env` file does **not** get uploaded. Verify `.gitignore` contains:
+Before deploying, verify `.gitignore` contains:
 
 ```
 .env
+.env.local
+.env.*.local
+
 node_modules/
+
 public/uploads/*
 !public/uploads/**/
 !public/uploads/**/.gitkeep
+!public/uploads/branding/
+!public/uploads/branding/**
+
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+test-*.mjs
+email-preview.html
+iavmn-local-backup-*.sql
 ```
 
-Commit and push your code to your Git repository:
+Commit and push your code:
 
 ```bash
 git add .
@@ -46,406 +63,561 @@ git push origin main
 
 1. Log into **cPanel**
 2. Go to **MySQL® Databases**
-3. Under **Create New Database**:
-   - Database name: `iavmn` (cPanel will prefix it, e.g. `impactdi_iavmn`)
-   - Click **Create Database**
+3. Create a database: `iavmn` (cPanel may prefix it — note the full name)
 4. Under **MySQL Users → Add New User**:
-   - Username: `iavmn_app` (cPanel will prefix it)
-   - Password: generate a strong password — **save it**
-   - Click **Create User**
+   - Username: `iavmn_app`
+   - Password: generate a strong one — **save it**
 5. Under **Add User To Database**:
    - Select the user and database
-   - Click **Add**
    - Grant **ALL PRIVILEGES**
-   - Click **Make Changes**
 
-**Note these values:**
-- DB Name: `impactdi_iavmn`
-- DB User: `impactdi_iavmn_app`
-- DB Password: `(the password you saved)`
-- DB Host: `localhost` (HostAfrica's MySQL runs locally on the same server)
+**Note down:**
+- DB Name (with prefix if applicable)
+- DB User
+- DB Password
+- DB Host — usually `localhost` on HostAfrica
 
-### 2b. Import the schema
+### 2b. Import the schema (via phpMyAdmin)
 
-1. In cPanel, open **phpMyAdmin**
-2. Select your new database from the left sidebar
-3. Click the **Import** tab
-4. Upload `database/schema.sql` → click **Go**
-5. Upload `database/seed-settings.sql` → click **Go**
-6. Upload `database/migrations/001-add-menu-fields-to-pages.sql` → click **Go**
+1. cPanel → **phpMyAdmin**
+2. Select your database
+3. Click **Import** → choose `database/schema.sql` → **Go**
+4. Import `database/seed-settings.sql`
+5. Import all 5 files from `database/migrations/` **in order** (001 → 005)
 
-### 2c. Verify tables
+### 2c. Verify
 
-You should see these tables in phpMyAdmin:
-- `contact_messages`
-- `faqs`
-- `hero_slides`
-- `membership_applications`
-- `membership_tiers`
-- `pages`
-- `posts`
-- `settings`
-- `subscribers`
-- `testimonials`
-- `users`
+Expected tables (**14 total** after all imports):
 
-(`user_sessions` is auto-created on first app start.)
-
----
-
-## Step 3: Set Up the Node.js Application
-
-HostAfrica uses **cPanel's "Setup Node.js App"** feature.
-
-### 3a. Create the app
-
-1. In cPanel, search for **Setup Node.js App** (under "Software")
-2. Click **Create Application**
-3. Fill in:
-   - **Node.js version:** 20.x or higher (HostAfrica usually offers 18.x, 20.x, 22.x)
-   - **Application mode:** Production
-   - **Application root:** `iavmn` (or your preferred folder name — this will be created under your home dir)
-   - **Application URL:** `iavmn.org` (or your domain)
-   - **Application startup file:** `server.js`
-4. Click **Create**
-
-cPanel will create a folder like `/home/username/iavmn/` and generate a `Passengerfile` or starter setup.
-
-### 3b. Upload your code
-
-You have two options:
-
-**Option A — Git clone (recommended)**
-
-1. Open cPanel's **Terminal** (or SSH into the server)
-2. Navigate to your app root:
-   ```bash
-   cd ~/iavmn
-   ```
-3. Clone your repo:
-   ```bash
-   git clone https://github.com/yourusername/iavmn.git .
-   ```
-   (The `.` at the end clones into the current folder)
-
-**Option B — File Manager upload**
-
-1. Zip your project locally (exclude `node_modules/` and `.env`)
-2. In cPanel → **File Manager** → navigate to `iavmn/`
-3. Upload the zip
-4. Right-click → **Extract**
-5. Delete the zip
-
-### 3c. Verify the file structure
-
-```bash
-ls -la ~/iavmn
+```
+contact_messages
+council_members
+faqs
+hero_slides
+members
+membership_applications
+membership_tiers
+newsletter_recipients
+newsletter_sends
+pages
+posts
+settings
+subscribers
+testimonials
+users
 ```
 
-You should see:
-```
-server.js
-package.json
-src/
-public/
-database/
-.env.example
-```
+(`user_sessions` is created automatically on first app boot.)
+
+The `settings` table should have **38 rows**.
 
 ---
 
-## Step 4: Configure Environment Variables
+## Step 3: Create the Node.js Application
 
-In cPanel's **Setup Node.js App** page for your app:
+### 3a. In cPanel → Setup Node.js App
 
-1. Scroll to **Environment variables**
-2. Add these variables one by one:
+Click **Create Application** and fill in:
 
-| Name | Value |
-|------|-------|
-| `NODE_ENV` | `production` |
-| `PORT` | `3000` (or leave blank — Passenger sets it automatically) |
-| `APP_NAME` | `IAVMN` |
-| `APP_URL` | `https://iavmn.org` |
-| `DB_HOST` | `localhost` |
-| `DB_PORT` | `3306` |
-| `DB_USER` | `impactdi_iavmn_app` |
-| `DB_PASSWORD` | *(the DB password)* |
-| `DB_NAME` | `impactdi_iavmn` |
-| `SESSION_SECRET` | *(generate with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`)* |
-| `SESSION_MAX_AGE_MS` | `86400000` |
-| `MAIL_HOST` | `mail.acad.com.ng` |
-| `MAIL_PORT` | `465` |
-| `MAIL_SECURE` | `true` |
-| `MAIL_USER` | `schools@acad.com.ng` |
-| `MAIL_PASS` | *(the email password)* |
-| `MAIL_FROM_NAME` | `IAVMN` |
-| `MAIL_FROM_EMAIL` | `schools@acad.com.ng` |
-| `PAYSTACK_PUBLIC_KEY` | `pk_live_...` |
-| `PAYSTACK_SECRET_KEY` | `sk_live_...` |
-| `UPLOAD_DIR` | `public/uploads` |
-| `MAX_UPLOAD_MB` | `5` |
+| Field | Value |
+|---|---|
+| **Node.js version** | **20.x** (recommended) |
+| **Application mode** | **Production** |
+| **Application root** | `iavmn` |
+| **Application URL** | `iavmn.org.ng` |
+| **Application startup file** | `server.js` |
 
-3. Click **Save**
+Click **Create**.
+
+**Note:** cPanel may pre-populate `~/iavmn/` with placeholder files (`public/`, `server.js`, `tmp/`). We'll clean these in the next step.
+
+### 3b. Note these values
+
+- **Application root path** — usually `/home/USERNAME/iavmn`
+- **Virtual environment command**:
+  ```
+  source /home/USERNAME/nodevenv/iavmn/20/bin/activate && cd /home/USERNAME/iavmn
+  ```
+- **Application URL** — should be `iavmn.org.ng`
+
+### 3c. Do NOT start the app yet
+
+Starting now will fail — no code, no dependencies.
 
 ---
 
-## Step 5: Install Dependencies
+## Step 4: Upload Code via Git
 
-In **Setup Node.js App**, click **Run NPM Install**.
+### 4a. Open cPanel Terminal
 
-Wait for it to complete — should take 1–3 minutes. When done, the button shows **Run JS script** instead.
+1. cPanel → **Terminal**
+2. You land in your home directory
 
-If it fails:
-- Open cPanel Terminal: `cd ~/iavmn && npm install --production`
-- Paste any error message and troubleshoot from there
+### 4b. Clean the app folder
 
----
-
-## Step 6: Set File Permissions
-
-Uploads need to be writable by the Node.js process.
-
-In cPanel Terminal:
+The app folder usually has placeholder files cPanel created:
 
 ```bash
 cd ~/iavmn
-chmod -R 755 public/uploads
+ls -la
 ```
 
-If uploads fail later, you may need:
+You'll likely see `public/`, `server.js`, `tmp/`.
+
+**Keep `tmp/`** — Passenger needs it. Remove the others:
 
 ```bash
-chmod -R 775 public/uploads
+rm -rf public server.js
+```
+
+### 4c. Clone into a temp folder, then move
+
+Because `~/iavmn/` isn't empty (it has `tmp/`), we clone into a sibling and move everything:
+
+```bash
+cd ~
+git clone https://github.com/YOUR-USERNAME/iavmn.git iavmn-clone
+cp -r ~/iavmn-clone/. ~/iavmn/
+rm -rf ~/iavmn-clone
+cd ~/iavmn
+```
+
+Verify:
+
+```bash
+ls -la
+git status
+```
+
+**Expected**: `.git`, `.gitignore`, `README.md`, `package.json`, `server.js`, `src/`, `public/`, `database/`, `tmp/`, plus the four docs. `git status` shows "clean working tree" (except `tmp/` which is untracked — that's fine).
+
+### 4d. If git asks for authentication
+
+GitHub no longer accepts passwords. You need a **Personal Access Token**:
+
+1. GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
+2. Generate new token with `repo` scope
+3. Use the token as the password when git prompts
+
+Or set up SSH keys (more secure, more setup).
+
+---
+
+## Step 5: Create the Production `.env`
+
+### 5a. Create the file
+
+```bash
+cd ~/iavmn
+nano .env
+```
+
+### 5b. Paste this template (then replace the placeholders)
+
+```env
+NODE_ENV=production
+PORT=3000
+APP_NAME=IAVMN
+APP_URL=https://yourdomain.com
+
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=YOUR_DB_USER
+DB_PASSWORD=YOUR_DB_PASSWORD
+DB_NAME=YOUR_DB_NAME
+
+SESSION_SECRET=REPLACE_WITH_A_LONG_RANDOM_STRING
+SESSION_MAX_AGE_MS=86400000
+
+MAIL_HOST=mail.yourdomain.com
+MAIL_PORT=465
+MAIL_SECURE=true
+MAIL_USER=info@yourdomain.com
+MAIL_PASS=YOUR_EMAIL_PASSWORD
+MAIL_FROM_NAME=IAVMN
+MAIL_FROM_EMAIL=info@yourdomain.com
+
+PAYSTACK_PUBLIC_KEY=pk_test_xxxxxxxxxxxxxxxxxxxx
+PAYSTACK_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxx
+
+UPLOAD_DIR=public/uploads
+MAX_UPLOAD_MB=5
+```
+
+### 5c. Generate the session secret
+
+In a second terminal tab:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+```
+
+Copy the output into `SESSION_SECRET`.
+
+### 5d. Save and lock down
+
+- **Ctrl+O** → Enter (save)
+- **Ctrl+X** (exit)
+- `chmod 600 .env` (only owner can read)
+
+Verify:
+
+```bash
+grep -E "^(APP_URL|MAIL_HOST|MAIL_USER)=" .env
 ```
 
 ---
 
-## Step 7: Start the Application
+## Step 6: Install Dependencies
 
-Back in **Setup Node.js App**:
+### 6a. Activate the venv
 
-1. Click **Restart** (or **Start**)
-2. Wait a few seconds
-3. Visit your domain: `https://iavmn.org`
-
-### First-time setup
-
-Since the users table is empty, visiting any admin URL will redirect you. Go to:
-
-```
-https://iavmn.org/setup
+```bash
+source /home/USERNAME/nodevenv/iavmn/20/bin/activate && cd ~/iavmn
 ```
 
-Create your super admin account. **Once complete, `/setup` becomes a 404 forever.**
+**Note:** The venv must be activated in every new terminal session. Your prompt should show `(iavmn:20)`.
+
+### 6b. Verify Node version
+
+```bash
+node -v
+npm -v
+```
+
+**Expected**: Node 20.x, npm 10.x
+
+### 6c. Install
+
+```bash
+npm install
+```
+
+**Expected**: 2–5 minutes, ends with "added XXX packages".
+
+**Note:** `npm install --production` is deprecated — use `npm install` and cPanel handles the rest.
+
+### 6d. Verify
+
+```bash
+ls node_modules | grep -E "^(express|mysql2|ejs|bcrypt|nodemailer|pdfkit|qrcode|helmet|multer)$"
+```
+
+**Expected**: all 9 packages listed.
 
 ---
 
-## Step 8: Verify Everything Works
+## Step 7: Start the App
 
-Run through this checklist:
+Back in cPanel → **Setup Node.js App** → find your app → click **Restart**.
 
-- [ ] Home page loads
-- [ ] Images load (uploaded files appear)
-- [ ] Navigation works on mobile
-- [ ] `/setup` was used to create your admin
-- [ ] Login works at `/login`
-- [ ] `/admin` dashboard renders
-- [ ] You can upload a hero slide image
-- [ ] You can publish a post
-- [ ] Contact form sends email (check the recipient's inbox)
-- [ ] Newsletter subscribe sends a welcome email
-- [ ] Membership application submits successfully
-- [ ] Paystack test payment completes
-- [ ] Admin receives application + payment notifications
+Wait 10–15 seconds. The page should show the app as **Running**.
 
 ---
 
-## Step 9: Set Up Paystack Webhook
+## Step 8: First Boot Test & Common Issues
+
+### 8a. Try the site
+
+Open `https://yourdomain.com/` in a browser.
+
+### ⚠️ Issue: cPanel placeholder `index.html` intercepts the homepage
+
+**Symptom**: `/setup` works but `/` shows a HostAfrica "domain registered" placeholder.
+
+**Cause**: Apache serves a static `index.html` in `public_html/` before Passenger gets a chance.
+
+**Fix**:
+
+```bash
+ls -la ~/domains/YOURDOMAIN.com/public_html/
+rm ~/domains/YOURDOMAIN.com/public_html/index.html
+rm ~/domains/YOURDOMAIN.com/public_html/index.php 2>/dev/null
+```
+
+**Keep** `.htaccess` — that's the Passenger forwarding config.
+
+### 8b. Complete first-time setup
+
+Once the site loads, visit:
+
+```
+https://yourdomain.com/setup
+```
+
+Create your super admin account with a **strong, unique password**.
+
+**After setup, `/setup` returns 404 forever** — this is a security measure.
+
+### 8c. Log in
+
+Test logging in at `/login`. If successful, you land on `/admin`.
+
+---
+
+## Step 9: Common Login Issue — `trust proxy`
+
+**Symptom**: Login redirects to `/admin`, then immediately bounces back to `/login`. No error message. `user_sessions` has rows but the session doesn't persist.
+
+**Cause**: HostAfrica runs nginx/LiteSpeed in front of Node. Express thinks requests are HTTP even when visitors are on HTTPS, so **Secure session cookies are never sent**.
+
+**Fix**: `server.js` must contain:
+
+```js
+app.set('trust proxy', 1);
+```
+
+And the session config must include:
+
+```js
+proxy: true,
+```
+
+Both are already in the current `server.js`. If they're ever removed, this bug returns.
+
+---
+
+## Step 10: Set Up Email
+
+### 10a. Confirm the mail account
+
+cPanel → **Email Accounts** → verify `info@yourdomain.com` exists.
+
+### 10b. Find the correct SMTP host
+
+cPanel → **Email Accounts** → click **Connect Devices** next to your email. Look for:
+
+- **Outgoing Server** (e.g., `mail.yourdomain.com`)
+- **Outgoing Port** (usually 465 SSL or 587 STARTTLS)
+
+Update `.env` if different from what's already there.
+
+### 10c. Fix the "certificate expired" issue
+
+Some HostAfrica mail servers have expired SSL certificates. The app works around this in `mailer.js` with:
+
+```js
+tls: {
+  rejectUnauthorized: false,
+  servername: host,
+},
+```
+
+**Do not remove** until HostAfrica renews the certificate.
+
+### 10d. Test
+
+```bash
+node -e "import('./src/services/mailer.js').then(m => m.sendMail({ to: 'you@example.com', subject: 'Test', html: '<p>Test from IAVMN</p>' }))"
+```
+
+**Expected**: `[mailer] sent: <messageId>` — and the email arrives.
+
+### 10e. Set up SPF/DKIM
+
+**Purpose**: prevents emails from landing in spam.
+
+1. In cPanel, search for **Email Deliverability**
+2. If available, click **Manage** next to the domain
+3. Install the suggested **SPF** and **DKIM** records
+4. Wait 15 minutes for DNS propagation
+
+**If Email Deliverability is not available**: open a HostAfrica support ticket asking them to enable it. Some hosting plans hide it when the domain uses external DNS.
+
+---
+
+## Step 11: Set Up Paystack
+
+### 11a. Test mode first
+
+Keep `pk_test_*` and `sk_test_*` in `.env` initially. Confirm the mock checkout flow works.
+
+### 11b. Live keys
+
+When ready:
 
 1. Log into https://dashboard.paystack.com
-2. Go to **Settings → API Keys & Webhooks**
-3. Set **Webhook URL:**
+2. **Settings → API Keys & Webhooks**
+3. Copy the **Live Public Key** and **Live Secret Key**
+4. Edit `.env`:
+   ```bash
+   nano ~/iavmn/.env
    ```
-   https://iavmn.org/webhooks/paystack
-   ```
-4. Click **Save**
+5. Replace with `pk_live_*` and `sk_live_*`
+6. Save (Ctrl+O, Enter, Ctrl+X)
+7. Restart the app in cPanel
 
-Now Paystack will POST to your app on every successful transaction — a belt-and-braces confirmation in addition to the browser callback.
+### 11c. Set the webhook URL
 
-### Testing the webhook
+Paystack dashboard → **Webhook URL**:
 
-Paystack has a "Send test webhook" option. Use it to verify your endpoint receives events.
+```
+https://yourdomain.com/webhooks/paystack
+```
+
+### 11d. Test
+
+- Visit `/admin/paystack-test` — should show "Configured: Yes"
+- Run a small test transaction (₦100) with a real card
+- Verify the application is marked **Paid** and the receipt email arrives
 
 ---
 
-## Step 10: SSL Certificate
+## Step 12: SSL / HTTPS
 
-HostAfrica usually provides free Let's Encrypt SSL. To enable:
+HostAfrica provides free Let's Encrypt SSL.
 
 1. cPanel → **SSL/TLS Status**
-2. Find your domain
-3. Click **Run AutoSSL**
+2. Find your domain → **Run AutoSSL**
+3. Wait 5 minutes
 
-Wait 5 minutes, then visit `https://iavmn.org`. The padlock should appear.
+Once HTTPS works:
+- `NODE_ENV=production` should already be set (via `.env` or cPanel env vars)
+- Session cookies automatically get the `Secure` flag
 
-**Important:** Once HTTPS works, edit `server.js` to set `secure: true` for session cookies. Currently it reads `NODE_ENV=production` to decide — verify in cPanel env vars that `NODE_ENV=production`.
-
----
-
-## Step 11: Set Up Automatic Backups (Recommended)
-
-### Database backups
-
-1. cPanel → **Cron Jobs**
-2. Add a daily job:
-   ```
-   0 3 * * * mysqldump -u impactdi_iavmn_app -p'YOUR_DB_PASSWORD' impactdi_iavmn | gzip > /home/username/backups/db-$(date +\%Y\%m\%d).sql.gz
-   ```
-3. Create the backups folder first:
-   ```bash
-   mkdir -p ~/backups
-   ```
-
-### File backups
-
-1. Cron job for uploads:
-   ```
-   30 3 * * * tar czf /home/username/backups/uploads-$(date +\%Y\%m\%d).tar.gz -C /home/username/iavmn/public uploads
-   ```
-
-### Off-site backup (optional)
-
-Use cPanel's **Backup Wizard** to download a full backup weekly.
+**Verify** the padlock icon appears in the browser.
 
 ---
 
-## Step 12: Monitor & Maintain
+## Step 13: Set Up Backups
 
-### Check logs
+### 13a. Create a backups folder
 
-If something breaks, look for:
+```bash
+mkdir -p ~/backups
+```
 
-- **App logs:** cPanel → **Setup Node.js App** → **Log file** (or check `stderr.log` in the app root)
-- **Error logs:** cPanel → **Errors** (under Metrics)
-- **MySQL logs:** rare on shared hosting, but cPanel → **MySQL → Logs** if available
+### 13b. Add cron jobs
 
-### Common issues
+cPanel → **Cron Jobs**:
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| "Cannot GET /" or 503 | App crashed on startup | Check logs in Node.js App page |
-| 500 errors on every page | Missing env var or DB connection issue | Verify env vars; test DB connection |
-| Images 404 | Uploads folder not writable | `chmod 775 public/uploads` |
-| Emails not sending | SMTP credentials wrong or certificate issue | Test with a mailer script; contact HostAfrica if cert expired |
-| Sessions log out constantly | Session store not working | Check `user_sessions` table exists in DB |
-| Paystack "invalid signature" | Wrong secret key or webhook URL | Recheck `.env` and Paystack dashboard |
-| Random 502 errors | Node process OOM or crashing | Check memory usage; reduce `connectionLimit` in `db.js` |
+**Daily DB backup (3:00 AM)**:
+```
+0 3 * * * mysqldump -u DB_USER -p'DB_PASSWORD' DB_NAME | gzip > /home/USER/backups/db-$(date +\%Y\%m\%d).sql.gz
+```
 
-### Restarting the app
+**Daily uploads backup (3:30 AM)**:
+```
+30 3 * * * tar czf /home/USER/backups/uploads-$(date +\%Y\%m\%d).tar.gz -C /home/USER/iavmn/public uploads
+```
 
-In **Setup Node.js App**, click **Restart** after any code change.
+### 13c. Weekly off-site download
 
-### Deploying updates
+Every Sunday, download the latest backups from cPanel → **File Manager** → `~/backups/`. Store them locally or in cloud storage.
+
+---
+
+## Step 14: Post-Launch Checklist
+
+Run through this list before considering the deployment complete:
+
+- [ ] Home page loads with logo, hero, membership cards
+- [ ] All navigation links work
+- [ ] Mobile view works (test at 360×640)
+- [ ] Admin login works
+- [ ] Dashboard shows stats
+- [ ] Settings save correctly
+- [ ] Uploading images works
+- [ ] Contact form sends email
+- [ ] Newsletter subscribe sends welcome email
+- [ ] Search finds results
+- [ ] Membership application saves
+- [ ] Payment completes (test mode or live)
+- [ ] Approval creates member + sends welcome email
+- [ ] Member can log in to portal
+- [ ] Certificate PDF downloads with QR code
+- [ ] QR code opens verification page
+- [ ] Sitemap.xml is served
+- [ ] robots.txt is served
+- [ ] Real-time pill shows "Live"
+- [ ] Toast notifications appear
+
+---
+
+## Step 15: Production Notes
+
+### Session cookie name: `iavmn.sid`
+
+To log out all users, delete rows from `user_sessions`.
+
+### Polling vs SSE
+
+The admin notification system uses **polling every 15 seconds** (`/admin/events/poll`), not Server-Sent Events. SSE doesn't work reliably through HostAfrica's LiteSpeed proxy — it buffers the response and events never arrive.
+
+### Email URL injection
+
+EJS templates **do not have access to `process.env`**. The `mailer.js` service injects `appUrl` into every template's render data. Templates should use `appUrl` (not `process.env.APP_URL`).
+
+### Favicon at root
+
+`public/favicon.ico` must exist. Browsers request it at the domain root regardless of any `<link rel="icon">` tag.
+
+### `responsive-helpers.css`
+
+Contains `.hide-mobile` and `.show-mobile`. Loaded in every layout. **Do not remove**.
+
+---
+
+## Updating the App After Launch
 
 ```bash
 cd ~/iavmn
-git pull
-npm install --production
+git pull origin main
+npm install          # if package.json changed
 # Then in cPanel, click Restart
 ```
 
----
-
-## Step 13: Post-Launch Checklist
-
-- [ ] Test on real mobile device
-- [ ] Verify all emails arrive (check spam folders)
-- [ ] Update `settings` in admin with real phone, address, socials
-- [ ] Upload real logo, favicon, hero slides
-- [ ] Replace placeholder text on pages
-- [ ] Add real council members
-- [ ] Create the four membership tiers with correct fees
-- [ ] Test one real Paystack transaction (small amount) with live keys
-- [ ] Add `https://iavmn.org/sitemap.xml` to Google Search Console
-- [ ] Add the site to Google Analytics (optional — add snippet to `layouts/main.ejs`)
-- [ ] Set up SPF / DKIM records in cPanel → **Email Deliverability**
-- [ ] Test the "forgot password" flow — **note:** not yet implemented; admin password change is manual for now
-
----
-
-## Troubleshooting Deep Dive
-
-### App won't start
-
-Open **Setup Node.js App** → check the error output. Common causes:
-
-1. **Missing `node_modules`** → Run NPM Install again
-2. **Wrong Node version** → set the correct version in the app settings
-3. **Import error** → you forgot to push a file; `git pull` again
-4. **`.env` not found** → env vars must be set in the cPanel UI (not uploaded as a file, unless you upload `.env` manually to the app root)
-
-### Manual `.env` (alternative to UI env vars)
-
-If you prefer a `.env` file over cPanel's UI:
-
-1. Create `.env` locally with all values
-2. Upload to `~/iavmn/.env` via File Manager
-3. `chmod 600 ~/iavmn/.env` (only your user can read it)
-4. Restart the app
-
-Either approach works; just don't have both (cPanel env vars override `.env` in Node).
-
-### Database connection refused
-
-If you see `ECONNREFUSED` or `Access denied`:
-
-1. Verify DB credentials in cPanel → MySQL Databases
-2. Test from cPanel Terminal:
-   ```bash
-   mysql -u impactdi_iavmn_app -p -h localhost impactdi_iavmn
-   ```
-3. If that works but Node doesn't, check `.env` / env vars have no typos
-
-### Session issues
-
-Users getting logged out randomly usually means:
-
-1. Session store is memory-based (it's not — we use MySQL)
-2. `user_sessions` table is missing — check phpMyAdmin
-3. Multiple instances running — passenger handles one process, so this is unlikely
-
-If issues persist, verify `SESSION_SECRET` is a real value (not `dev-secret-change-me-later`).
+**The app does not restart automatically.** Any code change requires a manual restart via cPanel.
 
 ---
 
 ## Rolling Back
 
-If a deployment breaks things:
+If a deployment breaks:
 
 ```bash
 cd ~/iavmn
-git log --oneline        # find the previous commit hash
+git log --oneline            # find the previous commit hash
 git checkout <hash>
-npm install --production
-# Then click Restart in cPanel
+npm install
+# Restart in cPanel
 ```
 
-Once the issue is fixed:
+When fixed:
 
 ```bash
 git checkout main
 git pull
+# Restart in cPanel
 ```
+
+---
+
+## Troubleshooting Quick Reference
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| App won't start | Missing deps, wrong env, bad DB creds | Check stderr.log in app root |
+| 503 Service Unavailable | Passenger can't reach the app | Check `npm install` succeeded; verify `.env` |
+| 500 errors | App crash or DB error | Check stderr.log |
+| Login loops back to `/login` | Missing `trust proxy` | Verify `server.js` |
+| Images 404 | Uploads folder not writable | `chmod 775 public/uploads` |
+| Emails not sending | Wrong SMTP credentials | Test with the mailer one-liner |
+| Emails contain `localhost` URLs | `appUrl` not injected | Check `mailer.js` |
+| Emails land in spam | SPF/DKIM missing | Set up in cPanel |
+| Paystack not configured | Keys missing/wrong prefix | Check `/admin/paystack-test` |
+| Random 502 errors | Memory pressure | Reduce `connectionLimit` in `db.js` |
+| Real-time pill stuck on "Connecting" | Polling endpoint not reachable | Check Network tab for `/admin/events/poll` |
 
 ---
 
 ## Support
 
-- **HostAfrica support:** https://hostafrica.com/support
-- **Paystack support:** https://paystack.com/support
-- **Project repo:** *(add your repo URL)*
+- **HostAfrica:** https://hostafrica.com/support
+- **Paystack:** https://paystack.com/support
+- **Developer:** Impact Digital — https://impactdigitalacademy.com.ng
 
 ---
 
-**Last updated:** 2026-10-04
+**Last updated:** October 2026
+**Deployed on:** HostAfrica shared hosting (Node.js 20, LiteSpeed)

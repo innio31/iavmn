@@ -6,21 +6,17 @@ import { query } from '../db.js';
 
 /**
  * Generate a unique application reference like IAVMN-2026-0001.
- * Uses current year + padded sequence based on existing count for that year.
- * Falls back to a random suffix on collision.
  */
 export const generateReference = async () => {
   const year = new Date().getFullYear();
   const prefix = `IAVMN-${year}-`;
 
-  // Count existing applications for this year
   const rows = await query(
     "SELECT COUNT(*) AS n FROM `membership_applications` WHERE `reference` LIKE ?",
     [`${prefix}%`]
   );
   const next = Number(rows[0].n) + 1;
 
-  // Try sequential; if collision, add a random suffix
   for (let attempt = 0; attempt < 5; attempt++) {
     const seq = String(next + attempt).padStart(4, '0');
     const ref = `${prefix}${seq}`;
@@ -31,23 +27,23 @@ export const generateReference = async () => {
     if (!exists.length) return ref;
   }
 
-  // Fallback: append random hex
   return `${prefix}${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 };
 
 /**
  * List applications.
- * @param {object} opts
- * @param {string} opts.status         Optional: 'submitted' | 'under_review' | 'approved' | 'rejected'
- * @param {string} opts.paymentStatus  Optional: 'pending' | 'paid' | 'failed' | 'refunded'
- * @param {number} opts.limit
- * @param {number} opts.offset
  */
 export const listApplications = async (opts = {}) => {
   const { status = null, paymentStatus = null, limit = null, offset = 0 } = opts;
 
+  // NOTE: We now join and select tier.registration_fee AS tier_registration_fee
   let sql = `
-    SELECT a.*, t.name AS tier_name, t.slug AS tier_slug, t.currency AS tier_currency
+    SELECT a.*, 
+           t.name AS tier_name, 
+           t.slug AS tier_slug, 
+           t.currency AS tier_currency, 
+           t.fee_amount AS tier_fee,
+           t.registration_fee AS tier_registration_fee
     FROM membership_applications a
     LEFT JOIN membership_tiers t ON t.id = a.tier_id
   `;
@@ -104,11 +100,16 @@ export const countApplications = async (opts = {}) => {
 };
 
 /**
- * Find an application by id (with tier name).
+ * Find an application by id (with tier info).
  */
 export const findApplicationById = async (id) => {
   const rows = await query(
-    `SELECT a.*, t.name AS tier_name, t.slug AS tier_slug, t.currency AS tier_currency, t.fee_amount AS tier_fee
+    `SELECT a.*, 
+            t.name AS tier_name, 
+            t.slug AS tier_slug, 
+            t.currency AS tier_currency, 
+            t.fee_amount AS tier_fee,
+            t.registration_fee AS tier_registration_fee
      FROM membership_applications a
      LEFT JOIN membership_tiers t ON t.id = a.tier_id
      WHERE a.id = ? LIMIT 1`,
@@ -118,11 +119,16 @@ export const findApplicationById = async (id) => {
 };
 
 /**
- * Find an application by reference (used for Paystack callbacks).
+ * Find an application by reference.
  */
 export const findApplicationByReference = async (reference) => {
   const rows = await query(
-    `SELECT a.*, t.name AS tier_name, t.slug AS tier_slug, t.currency AS tier_currency, t.fee_amount AS tier_fee
+    `SELECT a.*, 
+            t.name AS tier_name, 
+            t.slug AS tier_slug, 
+            t.currency AS tier_currency, 
+            t.fee_amount AS tier_fee,
+            t.registration_fee AS tier_registration_fee
      FROM membership_applications a
      LEFT JOIN membership_tiers t ON t.id = a.tier_id
      WHERE a.reference = ? LIMIT 1`,
@@ -132,8 +138,7 @@ export const findApplicationByReference = async (reference) => {
 };
 
 /**
- * Find an application by email (case-insensitive).
- * Useful for checking duplicate submissions.
+ * Find applications by email.
  */
 export const findApplicationsByEmail = async (email) => {
   return query(

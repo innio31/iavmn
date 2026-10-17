@@ -55,14 +55,15 @@ export const createTier = async ({
   description,
   icon,
   fee_amount,
+  registration_fee,
   currency = 'NGN',
   sort_order = 0,
   is_active = 1,
 }) => {
   const result = await query(
     `INSERT INTO \`membership_tiers\`
-       (\`slug\`, \`name\`, \`short_description\`, \`description\`, \`icon\`, \`fee_amount\`, \`currency\`, \`sort_order\`, \`is_active\`)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (\`slug\`, \`name\`, \`short_description\`, \`description\`, \`icon\`, \`fee_amount\`, \`registration_fee\`, \`currency\`, \`sort_order\`, \`is_active\`)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       slug,
       name,
@@ -70,6 +71,7 @@ export const createTier = async ({
       description ?? null,
       icon ?? null,
       Number(fee_amount) || 0,
+      Number(registration_fee) || 0,
       currency || 'NGN',
       Number(sort_order) || 0,
       is_active ? 1 : 0,
@@ -88,6 +90,7 @@ export const updateTier = async (id, {
   description,
   icon,
   fee_amount,
+  registration_fee,
   currency,
   sort_order,
   is_active,
@@ -100,6 +103,7 @@ export const updateTier = async (id, {
        \`description\` = ?,
        \`icon\` = ?,
        \`fee_amount\` = ?,
+       \`registration_fee\` = ?,
        \`currency\` = ?,
        \`sort_order\` = ?,
        \`is_active\` = ?
@@ -111,6 +115,7 @@ export const updateTier = async (id, {
       description ?? null,
       icon ?? null,
       Number(fee_amount) || 0,
+      Number(registration_fee) || 0,
       currency || 'NGN',
       Number(sort_order) || 0,
       is_active ? 1 : 0,
@@ -121,8 +126,6 @@ export const updateTier = async (id, {
 
 /**
  * Delete a tier.
- * NOTE: membership_applications has a FK to tiers with ON DELETE RESTRICT,
- * so this will throw if any applications reference this tier.
  */
 export const deleteTier = async (id) => {
   await query('DELETE FROM `membership_tiers` WHERE `id` = ?', [id]);
@@ -145,3 +148,18 @@ export const countApplicationsForTier = async (tierId) => {
 export const toggleTierActive = async (id, isActive) => {
   await query('UPDATE `membership_tiers` SET `is_active` = ? WHERE `id` = ?', [isActive ? 1 : 0, id]);
 };
+
+/**
+ * Calculate the total payable for a tier.
+ * Returns 0 for "quote-based" tiers (both fees are zero).
+ */
+export const calculateTierTotal = (tier) => {
+  const membership = Number(tier.fee_amount) || 0;
+  const registration = Number(tier.registration_fee) || 0;
+  return membership + registration;
+};
+
+/**
+ * Whether a tier requires payment (has any fee > 0).
+ */
+export const tierRequiresPayment = (tier) => calculateTierTotal(tier) > 0;

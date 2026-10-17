@@ -8,6 +8,7 @@ import {
   updateApplicationPayment,
 } from '../models/applicationModel.js';
 import { getAllSettings } from '../models/settingsModel.js';
+import { calculateTierTotal } from '../models/tierModel.js'; // <-- New import for math
 import {
   initializeTransaction,
   verifyTransaction,
@@ -28,8 +29,13 @@ export const showPayPage = async (req, res, next) => {
     return res.redirect(`/membership/apply/${application.reference}/success`);
   }
 
-  const feeAmount = Number(application.tier_fee || 0);
-  if (feeAmount <= 0) {
+  // Calculate total using both registration and membership fees
+  const regFee = Number(application.tier_registration_fee || 0);
+  const memFee = Number(application.tier_fee || 0);
+  const totalAmount = regFee + memFee;
+
+  if (totalAmount <= 0) {
+    // Quote-based tier — no online payment needed
     return res.redirect(`/membership/apply/${application.reference}/success`);
   }
 
@@ -38,15 +44,19 @@ export const showPayPage = async (req, res, next) => {
 
   const callback_url = `${appUrl.replace(/\/$/, '')}/membership/apply/${application.reference}/callback`;
 
+  // Pass the TOTAL to Paystack, not just the membership fee
   const init = await initializeTransaction({
     email: application.email,
-    amount: toSmallestUnit(feeAmount, application.tier_currency || 'NGN'),
+    amount: toSmallestUnit(totalAmount, application.tier_currency || 'NGN'),
     reference: application.reference,
     callback_url,
     metadata: {
       application_id: application.id,
       tier_name: application.tier_name,
       applicant_name: application.full_name,
+      registration_fee: regFee,
+      membership_fee: memFee,
+      total_fee: totalAmount,
     },
   });
 
@@ -56,12 +66,18 @@ export const showPayPage = async (req, res, next) => {
     return res.redirect(`/membership/apply/${application.reference}/success`);
   }
 
+  // Pass a feeBreakdown object to the view for the UI
   res.render('membership/pay', {
     title: 'Complete Payment',
     application,
     authorization_url: init.data.authorization_url,
     isMock: Boolean(init.data._mock),
     paystackConfigured: paystackIsConfigured(),
+    feeBreakdown: {
+      registration: regFee,
+      membership: memFee,
+      total: totalAmount,
+    },
   });
 };
 
@@ -117,7 +133,6 @@ export const handlePaymentCallback = async (req, res) => {
 
   clearCountsCache();
 
-  // Real-time event for admin dashboards
   try {
     const updated = await findApplicationById(application.id);
     emit('application:payment', {
@@ -134,7 +149,6 @@ export const handlePaymentCallback = async (req, res) => {
     console.error('[payment callback] emit failed:', err.message);
   }
 
-  // Emails (best effort)
   try {
     const updated = await findApplicationById(application.id);
     const settings = await getAllSettings();
@@ -230,7 +244,6 @@ export const handlePaystackWebhook = async (req, res) => {
           });
           clearCountsCache();
 
-          // Real-time event
           try {
             const updated = await findApplicationById(application.id);
             emit('application:payment', {

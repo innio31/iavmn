@@ -1,6 +1,31 @@
 <%
-  const feeAmount = Number(application.tier_fee || 0);
-  const feeCurrency = application.tier_currency || 'NGN';
+  const currencySymbol = (c) => {
+    if (c === 'NGN') return '₦';
+    if (c === 'USD') return '$';
+    if (c === 'GBP') return '£';
+    if (c === 'EUR') return '€';
+    if (c === 'GHS') return '₵';
+    if (c === 'KES') return 'KSh';
+    if (c === 'ZAR') return 'R';
+    return c + ' ';
+  };
+
+  const fmtMoney = (amount, currency) => {
+    const sym = currencySymbol(currency || 'NGN');
+    return sym + ' ' + Number(amount || 0).toLocaleString();
+  };
+
+  // The application holds tier_fee (the membership fee) and we now need registration_fee too.
+  // The controller will pass a computed `feeBreakdown` object — but we fall back gracefully.
+  const breakdown = typeof feeBreakdown !== 'undefined' && feeBreakdown
+    ? feeBreakdown
+    : {
+        registration: 0,
+        membership: Number(application.tier_fee || 0),
+        total: Number(application.tier_fee || 0),
+      };
+
+  const currency = application.tier_currency || 'NGN';
 %>
 
 <section class="page-hero page-hero-compact">
@@ -30,10 +55,19 @@
         </p>
       </div>
 
-      <div class="pay-amount-box">
-        <div class="pay-amount-label">Amount due</div>
-        <div class="pay-amount-value">
-          <%= feeCurrency %> <%= feeAmount.toLocaleString() %>
+      <%# ─── Fee breakdown ─── %>
+      <div class="pay-breakdown">
+        <div class="pay-breakdown-row">
+          <span class="pay-breakdown-label">Registration form</span>
+          <span class="pay-breakdown-value"><%= fmtMoney(breakdown.registration, currency) %></span>
+        </div>
+        <div class="pay-breakdown-row">
+          <span class="pay-breakdown-label"><%= application.tier_name %> membership</span>
+          <span class="pay-breakdown-value"><%= fmtMoney(breakdown.membership, currency) %></span>
+        </div>
+        <div class="pay-breakdown-row pay-breakdown-row-total">
+          <span class="pay-breakdown-label">Total due</span>
+          <span class="pay-breakdown-value"><%= fmtMoney(breakdown.total, currency) %></span>
         </div>
       </div>
 
@@ -47,10 +81,6 @@
           <span class="pay-detail-value"><%= application.email %></span>
         </div>
         <div class="pay-detail-row">
-          <span class="pay-detail-label">Tier</span>
-          <span class="pay-detail-value"><%= application.tier_name %></span>
-        </div>
-        <div class="pay-detail-row">
           <span class="pay-detail-label">Reference</span>
           <span class="pay-detail-value"><%= application.reference %></span>
         </div>
@@ -58,7 +88,7 @@
 
       <div class="pay-actions">
         <a href="<%= authorization_url %>" class="btn btn-primary btn-block">
-          <%= isMock ? 'Simulate Payment' : 'Pay ' + feeCurrency + ' ' + feeAmount.toLocaleString() + ' with Paystack' %>
+          <%= isMock ? 'Simulate Payment' : 'Pay ' + fmtMoney(breakdown.total, currency) + ' with Paystack' %>
         </a>
         <a href="/membership/apply/<%= application.reference %>/success" class="btn btn-outline btn-block">
           Pay Later
