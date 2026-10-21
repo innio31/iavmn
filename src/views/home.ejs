@@ -87,10 +87,8 @@
       <div class="home-cards">
         <% tiers.forEach((t) => { %>
           <%
-            const reg = Number(t.registration_fee || 0);
-            const mem = Number(t.fee_amount || 0);
-            const total = reg + mem;
-            const isQuote = total === 0;
+            const memFee = Number(t.fee_amount || 0);
+            const isQuote = memFee === 0;
           %>
           <a href="/membership/<%= t.slug %>" class="home-card">
             <div class="home-card-icon"><%= t.icon || '★' %></div>
@@ -99,11 +97,18 @@
             <% if (isQuote) { %>
               <div class="home-card-fee">Fee on enquiry</div>
             <% } else { %>
-              <div class="home-card-fee"><%= currencySymbol(t.currency) %> <%= total.toLocaleString() %></div>
+              <div class="home-card-fee"><%= currencySymbol(t.currency) %> <%= memFee.toLocaleString() %></div>
             <% } %>
           </a>
         <% }); %>
       </div>
+
+      <div class="membership-note" style="background: #f7faf9; padding: 14px 20px; border-radius: 8px; border: 1px solid #dfeae8; margin-top: 24px; font-size: 14px; color: #495057; text-align: center;">
+        <strong>Note:</strong> A one-off registration form fee of 
+        <strong><%= currencySymbol('NGN') %> <%= Number(globalFormFee || 20000).toLocaleString() %></strong> 
+        is required for all new applicants and will be added at checkout.
+      </div>
+
     <% } else { %>
       <div class="home-cards">
         <a href="/membership/student" class="home-card">
@@ -244,7 +249,7 @@
 
     window.heroNext = function () { next(); start(); };
     window.heroPrev = function () { prev(); start(); };
-    window.heroGo = function (i) { show(i); start(); };
+    window.heroGo = function (i) { show(i); start(); }
 
     var carousel = document.getElementById('heroCarousel');
     if (carousel) {
