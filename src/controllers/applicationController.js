@@ -1,10 +1,6 @@
 // src/controllers/applicationController.js
 // Public: apply form (per tier), submission with CV + photo uploads.
 // Admin: list with filters, view detail, approve/reject, delete.
-//
-// IMPORTANT: When admin approves an application, we create a member record,
-// generate a set-password token, and email the new member a welcome link
-// so they can activate their portal account.
 
 import { body, validationResult } from 'express-validator';
 import {
@@ -77,11 +73,15 @@ export const showApplyForm = async (req, res, next) => {
 
   const settings = await getAllSettings();
   const paystackEnabled = settings.paystack_enabled === '1';
-  const tierHasFee = Number(tier.fee_amount) > 0;
+  const globalFormFee = Number(settings.registration_form_fee || 20000);
+  
+  // A tier is quote-based if its membership fee is 0
+  const isQuoteBased = Number(tier.fee_amount) === 0;
 
   res.render('membership/apply', {
     title: 'Apply for ' + tier.name,
     tier,
+    globalFormFee,
     form: {
       full_name: (req.session.user && req.session.user.name) || '',
       email: (req.session.user && req.session.user.email) || '',
@@ -93,7 +93,8 @@ export const showApplyForm = async (req, res, next) => {
       agree: '',
     },
     errors: [],
-    paystackEnabled: paystackEnabled && tierHasFee,
+    // Only show payment if Paystack is on AND it's not a quote-based tier
+    paystackEnabled: paystackEnabled && !isQuoteBased,
   });
 };
 
@@ -126,11 +127,13 @@ export const postApplyForm = async (req, res, next) => {
     const errs = [...result.array(), ...fileErrors];
     const settings = await getAllSettings();
     const paystackEnabled = settings.paystack_enabled === '1';
-    const tierHasFee = Number(tier.fee_amount) > 0;
+    const globalFormFee = Number(settings.registration_form_fee || 20000);
+    const isQuoteBased = Number(tier.fee_amount) === 0;
 
     return res.status(422).render('membership/apply', {
       title: 'Apply for ' + tier.name,
       tier,
+      globalFormFee,
       form: {
         full_name: req.body.full_name || '',
         email: req.body.email || '',
@@ -142,7 +145,7 @@ export const postApplyForm = async (req, res, next) => {
         agree: req.body.agree || '',
       },
       errors: errs,
-      paystackEnabled: paystackEnabled && tierHasFee,
+      paystackEnabled: paystackEnabled && !isQuoteBased,
     });
   }
 
@@ -164,9 +167,10 @@ export const postApplyForm = async (req, res, next) => {
 
   clearCountsCache();
 
-  // Real-time event for admin dashboards
   try {
     const application = await findApplicationById(id);
+    const settings = await getAllSettings();
+
     emit('application:new', {
       id: application.id,
       reference: application.reference,
@@ -177,14 +181,6 @@ export const postApplyForm = async (req, res, next) => {
       status: application.status,
       created_at: application.created_at,
     });
-  } catch (err) {
-    console.error('[apply] emit failed:', err.message);
-  }
-
-  // Notification emails (best effort)
-  try {
-    const application = await findApplicationById(id);
-    const settings = await getAllSettings();
 
     await sendMail({
       to: application.email,
@@ -222,9 +218,12 @@ export const postApplyForm = async (req, res, next) => {
 
   const settings = await getAllSettings();
   const paystackEnabled = settings.paystack_enabled === '1';
-  const tierHasFee = Number(tier.fee_amount) > 0;
+  
+  // A tier requires payment if it's NOT quote-based
+  const isQuoteBased = Number(tier.fee_amount) === 0;
+  const requiresPayment = paystackEnabled && !isQuoteBased;
 
-  if (paystackEnabled && tierHasFee) {
+  if (requiresPayment) {
     return res.redirect(`/membership/apply/${reference}/pay`);
   }
 
@@ -278,12 +277,15 @@ export const showApplicationAdmin = async (req, res) => {
   }
 
   const member = await findMemberByApplicationId(application.id);
+  const settings = await getAllSettings();
+  const globalFormFee = Number(settings.registration_form_fee || 20000);
 
   res.render('admin/applications/view', {
     title: 'Application ' + application.reference,
     layout: 'layouts/admin',
     application,
     member,
+    globalFormFee,
   });
 };
 
@@ -307,7 +309,6 @@ export const postUpdateApplicationStatus = async (req, res) => {
   await updateApplicationStatus(application.id, status, notes);
   clearCountsCache();
 
-  // Real-time event for admin dashboards
   try {
     emit('application:status', {
       id: application.id,
@@ -320,7 +321,6 @@ export const postUpdateApplicationStatus = async (req, res) => {
     console.error('[application status] emit failed:', err.message);
   }
 
-  // ─── Approval hook: create member + send welcome email ───
   if (status === 'approved') {
     try {
       const existingMember = await findMemberByApplicationId(application.id);
@@ -333,10 +333,9 @@ export const postUpdateApplicationStatus = async (req, res) => {
         return res.redirect(`/admin/applications/${application.id}`);
       }
 
-      const memberId = await createMemberFromApplication(application, 12); // 12 months
+      const memberId = await createMemberFromApplication(application, 12);
       const member = await findMemberById(memberId);
-
-      const token = await generateResetToken(memberId, 2880); // 48 hours
+      const token = await generateResetToken(memberId, 2880);
       const settings = await getAllSettings();
 
       await sendMail({
@@ -352,7 +351,6 @@ export const postUpdateApplicationStatus = async (req, res) => {
         },
       });
 
-      // Real-time event: new member created
       try {
         emit('member:new', {
           id: member.id,
@@ -380,7 +378,6 @@ export const postUpdateApplicationStatus = async (req, res) => {
     }
   }
 
-  // Rejected → send decision email
   if (status === 'rejected') {
     try {
       const settings = await getAllSettings();

@@ -13,6 +13,7 @@ import {
   countApplicationsForTier,
   toggleTierActive,
 } from '../models/tierModel.js';
+import { getSetting } from '../models/settingsModel.js';
 
 // ─── Helpers ────────────────────────────────────────────
 
@@ -60,10 +61,6 @@ export const tierValidators = [
     .optional({ checkFalsy: true })
     .isFloat({ min: 0, max: 999999999 })
     .withMessage('Membership fee must be a positive number.'),
-  body('registration_fee')
-    .optional({ checkFalsy: true })
-    .isFloat({ min: 0, max: 999999999 })
-    .withMessage('Registration fee must be a positive number.'),
   body('currency')
     .optional({ checkFalsy: true })
     .isLength({ min: 3, max: 8 })
@@ -78,16 +75,21 @@ export const tierValidators = [
 
 export const listTiersAdmin = async (req, res) => {
   const tiers = await listTiers(false);
+  const globalFormFee = await getSetting('registration_form_fee') || '20000';
+  
   res.render('admin/tiers/list', {
     title: 'Membership Tiers',
     layout: 'layouts/admin',
     tiers,
+    globalFormFee,
   });
 };
 
 // ─── Admin: new ─────────────────────────────────────────
 
-export const showNewTier = (req, res) => {
+export const showNewTier = async (req, res) => {
+  const globalFormFee = await getSetting('registration_form_fee') || '20000';
+  
   res.render('admin/tiers/form', {
     title: 'New Membership Tier',
     layout: 'layouts/admin',
@@ -99,11 +101,11 @@ export const showNewTier = (req, res) => {
       description: '',
       icon: '',
       fee_amount: 0,
-      registration_fee: 20000,
       currency: 'NGN',
       sort_order: 0,
       is_active: 1,
     },
+    globalFormFee,
     errors: [],
     mode: 'new',
   });
@@ -112,6 +114,7 @@ export const showNewTier = (req, res) => {
 export const postNewTier = async (req, res) => {
   const result = validationResult(req);
   if (!result.isEmpty()) {
+    const globalFormFee = await getSetting('registration_form_fee') || '20000';
     return res.status(422).render('admin/tiers/form', {
       title: 'New Membership Tier',
       layout: 'layouts/admin',
@@ -123,11 +126,11 @@ export const postNewTier = async (req, res) => {
         description: req.body.description || '',
         icon: req.body.icon || '',
         fee_amount: Number(req.body.fee_amount) || 0,
-        registration_fee: Number(req.body.registration_fee) || 0,
         currency: req.body.currency || 'NGN',
         sort_order: Number(req.body.sort_order) || 0,
         is_active: req.body.is_active ? 1 : 0,
       },
+      globalFormFee,
       errors: result.array(),
       mode: 'new',
     });
@@ -145,7 +148,7 @@ export const postNewTier = async (req, res) => {
     description: (req.body.description || '').trim() || null,
     icon: (req.body.icon || '').trim() || null,
     fee_amount: Number(req.body.fee_amount) || 0,
-    registration_fee: Number(req.body.registration_fee) || 0,
+    registration_fee: 0, // Force to 0 — we use global setting now
     currency: (req.body.currency || 'NGN').trim().toUpperCase(),
     sort_order: Number(req.body.sort_order) || 0,
     is_active: req.body.is_active ? 1 : 0,
@@ -163,10 +166,13 @@ export const showEditTier = async (req, res) => {
     req.flash('error', 'Membership tier not found.');
     return res.redirect('/admin/tiers');
   }
+  const globalFormFee = await getSetting('registration_form_fee') || '20000';
+
   res.render('admin/tiers/form', {
     title: 'Edit Membership Tier',
     layout: 'layouts/admin',
     tier,
+    globalFormFee,
     errors: [],
     mode: 'edit',
   });
@@ -181,6 +187,7 @@ export const postEditTier = async (req, res) => {
 
   const result = validationResult(req);
   if (!result.isEmpty()) {
+    const globalFormFee = await getSetting('registration_form_fee') || '20000';
     return res.status(422).render('admin/tiers/form', {
       title: 'Edit Membership Tier',
       layout: 'layouts/admin',
@@ -192,11 +199,11 @@ export const postEditTier = async (req, res) => {
         description: req.body.description || '',
         icon: req.body.icon || '',
         fee_amount: Number(req.body.fee_amount) || 0,
-        registration_fee: Number(req.body.registration_fee) || 0,
         currency: req.body.currency || 'NGN',
         sort_order: Number(req.body.sort_order) || 0,
         is_active: req.body.is_active ? 1 : 0,
       },
+      globalFormFee,
       errors: result.array(),
       mode: 'edit',
     });
@@ -214,7 +221,7 @@ export const postEditTier = async (req, res) => {
     description: (req.body.description || '').trim() || null,
     icon: (req.body.icon || '').trim() || null,
     fee_amount: Number(req.body.fee_amount) || 0,
-    registration_fee: Number(req.body.registration_fee) || 0,
+    registration_fee: 0, // Force to 0
     currency: (req.body.currency || 'NGN').trim().toUpperCase(),
     sort_order: Number(req.body.sort_order) || 0,
     is_active: req.body.is_active ? 1 : 0,
@@ -264,9 +271,12 @@ export const postDeleteTier = async (req, res) => {
 
 export const publicListTiers = async (req, res) => {
   const tiers = await listTiers(true);
+  const globalFormFee = await getSetting('registration_form_fee') || '20000';
+
   res.render('membership/list', {
     title: 'Membership',
     tiers,
+    globalFormFee,
   });
 };
 
@@ -275,8 +285,11 @@ export const publicListTiers = async (req, res) => {
 export const publicTierDetail = async (req, res, next) => {
   const tier = await findTierBySlug(req.params.slug);
   if (!tier) return next();
+  const globalFormFee = await getSetting('registration_form_fee') || '20000';
+
   res.render('membership/detail', {
     title: tier.name,
     tier,
+    globalFormFee,
   });
 };

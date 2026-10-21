@@ -28,10 +28,8 @@
       <div class="tiers-grid">
         <% tiers.forEach((t) => { %>
           <%
-            const reg = Number(t.registration_fee || 0);
-            const mem = Number(t.fee_amount || 0);
-            const total = reg + mem;
-            const isQuote = total === 0;
+            const memFee = Number(t.fee_amount || 0);
+            const isQuote = memFee === 0;
           %>
           <div class="tier-card">
             <% if (t.icon) { %>
@@ -49,8 +47,8 @@
                 <span class="tier-fee-label">Fee</span>
                 <span class="tier-fee-amount" style="font-size: 15px;">Fee on enquiry</span>
               <% } else { %>
-                <span class="tier-fee-label">Total fee</span>
-                <span class="tier-fee-amount"><%= currencySymbol(t.currency) %> <%= total.toLocaleString() %></span>
+                <span class="tier-fee-label">Annual membership</span>
+                <span class="tier-fee-amount"><%= currencySymbol(t.currency) %> <%= memFee.toLocaleString() %></span>
               <% } %>
             </div>
 
@@ -62,7 +60,13 @@
         <% }); %>
       </div>
 
-      <p class="membership-note">
+      <div class="membership-note" style="background: #f7faf9; padding: 14px 20px; border-radius: 8px; border: 1px solid #dfeae8; margin-top: 24px; font-size: 14px; color: #495057; text-align: center;">
+        <strong>Note:</strong> A one-off registration form fee of 
+        <strong><%= currencySymbol('NGN') %> <%= Number(globalFormFee || 20000).toLocaleString() %></strong> 
+        is required for all new applicants and will be added at checkout.
+      </div>
+
+      <p class="membership-note" style="margin-top: 24px;">
         Not sure which category fits you? <a href="/contact">Contact us</a> and we'll help you decide.
       </p>
     <% } %>

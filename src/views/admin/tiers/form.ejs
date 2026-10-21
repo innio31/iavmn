@@ -3,7 +3,6 @@
   const action = isEdit ? `/admin/tiers/${tier.id}` : '/admin/tiers';
   const pageTitle = isEdit ? 'Edit Membership Tier' : 'New Membership Tier';
 
-  // Curated icon set — safe, cross-platform emojis
   const iconChoices = [
     '🎓', '👥', '💼', '🏅', '⭐', '✓', '◆', '▲',
     '🔑', '📘', '📗', '📙', '🛡️', '🏛️', '🌐', '💠',
@@ -15,12 +14,6 @@
     .replace(/^-+|-+$/g, '');
 
   const currencies = ['NGN', 'USD', 'GBP', 'EUR', 'GHS', 'KES', 'ZAR'];
-
-  // Helper to check if this is a "quote-based" tier (both fees are 0)
-  const isQuoteBased = Number(tier.fee_amount || 0) === 0 && Number(tier.registration_fee || 0) === 0;
-
-  // Helper to compute the total
-  const totalAmount = Number(tier.fee_amount || 0) + Number(tier.registration_fee || 0);
 %>
 
 <div class="page-header">
@@ -43,7 +36,7 @@
   </div>
 <% } %>
 
-<form action="<%= action %>" method="POST" class="admin-card" novalidate>
+<form action="<%= action %>" method="POST" class="admin-card" novalidate id="tierForm" data-global-fee="<%= Number(globalFormFee) || 20000 %>">
 
   <div class="form-row">
     <label for="name">Tier name <span style="color: #c0392b;">*</span></label>
@@ -128,36 +121,18 @@
 
   <%# ─── FEES SECTION ─── %>
   <hr class="admin-divider">
-  <h3 class="admin-section-heading">Fees</h3>
+  <h3 class="admin-section-heading">Membership Fee</h3>
 
-  <p class="text-muted" style="margin: 0 0 18px; font-size: 14px; line-height: 1.6;">
-    Every tier has two fees:
-    <strong>Registration</strong> (the application form, typically the same for all tiers)
-    and <strong>Membership</strong> (the annual fee specific to this tier).
-    The total is what the applicant pays online.
-    <br>
-    <br>
-    <strong>To make this tier "quote-based"</strong> (no online payment — applicant gets contacted by your team),
-    set <em>both</em> fees to 0.
-  </p>
+  <div class="admin-card" style="background: #f7faf9; border-color: #dfeae8; margin-bottom: 18px; padding: 14px 18px;">
+    <p style="margin: 0; font-size: 14px; color: #495057; line-height: 1.6;">
+      <strong>Global Registration Fee:</strong> ₦<%= Number(globalFormFee).toLocaleString() %><br>
+      The registration form fee is applied automatically at checkout for every applicant. You only set the <strong>annual membership fee</strong> below.
+    </p>
+  </div>
 
   <div class="form-row form-row-split-fees">
     <div>
-      <label for="registration_fee">Registration fee</label>
-      <input
-        type="number"
-        id="registration_fee"
-        name="registration_fee"
-        value="<%= tier.registration_fee !== undefined && tier.registration_fee !== null ? tier.registration_fee : 20000 %>"
-        min="0"
-        step="0.01"
-        inputmode="decimal"
-        oninput="updateTotal()">
-      <span class="form-hint">Fixed form/registration charge. Typically 20,000 for all tiers.</span>
-    </div>
-
-    <div>
-      <label for="fee_amount">Membership fee</label>
+      <label for="fee_amount">Membership fee (annual)</label>
       <input
         type="number"
         id="fee_amount"
@@ -167,7 +142,9 @@
         step="0.01"
         inputmode="decimal"
         oninput="updateTotal()">
-      <span class="form-hint">Annual membership fee for this tier.</span>
+      <span class="form-hint">
+        Set to <strong>0</strong> if this is a quote-based tier (e.g. Corporate).
+      </span>
     </div>
 
     <div>
@@ -182,11 +159,11 @@
 
   <div class="tier-total-box" id="totalBox">
     <div class="tier-total-row">
-      <span class="tier-total-label">Registration</span>
+      <span class="tier-total-label">Registration form (global)</span>
       <span class="tier-total-value" id="totalRegistration">₦ 0</span>
     </div>
     <div class="tier-total-row">
-      <span class="tier-total-label">Membership</span>
+      <span class="tier-total-label">Membership fee</span>
       <span class="tier-total-value" id="totalMembership">₦ 0</span>
     </div>
     <div class="tier-total-row tier-total-row-bold">
@@ -197,7 +174,7 @@
 
   <div class="tier-quote-notice" id="quoteNotice" style="display: none;">
     <strong>Quote-based tier.</strong>
-    With both fees at zero, the application will be submitted without online payment.
+    With the membership fee at zero, the application will be submitted without online payment.
     Your team will be notified and can contact the applicant with a custom quote.
   </div>
 
@@ -237,6 +214,10 @@
 </form>
 
 <script>
+  // Read the global fee from the form's data attribute (avoids EJS syntax errors in JS)
+  const formEl = document.getElementById('tierForm');
+  const GLOBAL_FORM_FEE = Number(formEl.dataset.globalFee) || 20000;
+
   function suggestSlug() {
     const nameInput = document.getElementById('name');
     const slugInput = document.getElementById('slug');
@@ -275,7 +256,6 @@
     });
   }
 
-  // ─── Live total calculation ───
   function formatMoney(amount, currency) {
     const symbols = {
       NGN: '₦', USD: '$', GBP: '£', EUR: '€', GHS: '₵', KES: 'KSh', ZAR: 'R',
@@ -285,17 +265,19 @@
   }
 
   function updateTotal() {
-    const reg = Number(document.getElementById('registration_fee').value) || 0;
     const mem = Number(document.getElementById('fee_amount').value) || 0;
     const currency = document.getElementById('currency').value;
-    const total = reg + mem;
+    
+    // The total is registration fee + membership fee
+    const total = GLOBAL_FORM_FEE + mem;
 
-    document.getElementById('totalRegistration').textContent = formatMoney(reg, currency);
+    document.getElementById('totalRegistration').textContent = formatMoney(GLOBAL_FORM_FEE, currency);
     document.getElementById('totalMembership').textContent = formatMoney(mem, currency);
     document.getElementById('totalGrand').textContent = formatMoney(total, currency);
 
     const quoteNotice = document.getElementById('quoteNotice');
-    if (total === 0) {
+    // A quote-based tier is when the MEMBERSHIP fee is 0
+    if (mem === 0) {
       quoteNotice.style.display = 'block';
     } else {
       quoteNotice.style.display = 'none';
@@ -305,6 +287,5 @@
   // Initialize on page load
   updateTotal();
 
-  // Also update when currency changes
   document.getElementById('currency').addEventListener('change', updateTotal);
 </script>

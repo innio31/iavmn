@@ -15,10 +15,11 @@
     return c + ' ';
   };
 
-  const reg = Number(tier.registration_fee || 0);
-  const mem = Number(tier.fee_amount || 0);
-  const total = reg + mem;
-  const isQuote = total === 0;
+  const memFee = Number(tier.fee_amount || 0);
+  const regFee = Number(globalFormFee || 20000);
+  const total = memFee + regFee;
+  
+  const isQuote = memFee === 0;
   const sym = currencySymbol(tier.currency);
 %>
 
@@ -73,12 +74,12 @@
           <% } else { %>
             <div class="tier-sidebar-fee-details">
               <div class="tier-sidebar-fee-row">
-                <span>Registration</span>
-                <span><%= sym %> <%= reg.toLocaleString() %></span>
+                <span>Registration form</span>
+                <span><%= sym %> <%= regFee.toLocaleString() %></span>
               </div>
               <div class="tier-sidebar-fee-row">
-                <span>Membership</span>
-                <span><%= sym %> <%= mem.toLocaleString() %></span>
+                <span>Membership fee</span>
+                <span><%= sym %> <%= memFee.toLocaleString() %></span>
               </div>
               <div class="tier-sidebar-fee-row tier-sidebar-fee-row-total">
                 <span>Total</span>

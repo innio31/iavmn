@@ -15,10 +15,11 @@
     return sym + ' ' + Number(amount || 0).toLocaleString();
   };
 
-  const registrationFee = Number(tier.registration_fee || 0);
-  const membershipFee = Number(tier.fee_amount || 0);
-  const totalFee = registrationFee + membershipFee;
-  const isQuoteBased = totalFee === 0;
+  const memFee = Number(tier.fee_amount || 0);
+  const regFee = Number(globalFormFee || 20000);
+  const totalFee = memFee + regFee;
+  
+  const isQuoteBased = memFee === 0;
   const hasFee = !isQuoteBased;
 %>
 
@@ -58,11 +59,11 @@
       <div class="apply-fee-breakdown">
         <div class="apply-fee-row">
           <span class="apply-fee-label">Registration form</span>
-          <span class="apply-fee-value"><%= fmtMoney(registrationFee, tier.currency) %></span>
+          <span class="apply-fee-value"><%= fmtMoney(regFee, tier.currency) %></span>
         </div>
         <div class="apply-fee-row">
           <span class="apply-fee-label"><%= tier.name %> membership (annual)</span>
-          <span class="apply-fee-value"><%= fmtMoney(membershipFee, tier.currency) %></span>
+          <span class="apply-fee-value"><%= fmtMoney(memFee, tier.currency) %></span>
         </div>
         <div class="apply-fee-row apply-fee-row-total">
           <span class="apply-fee-label">Total payable</span>
