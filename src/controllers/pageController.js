@@ -16,13 +16,16 @@ import { clearMenuPagesCache } from '../middleware/loadMenuPages.js';
 
 // ─── Helpers ────────────────────────────────────────────
 
+// We allow forward slashes so admins can nest URLs like 'membership/qualifications'
 const slugify = (str) =>
   String(str || '')
     .toLowerCase()
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/[^a-z0-9\/]+/g, '-')  // <-- Added \/ to allow slashes
     .replace(/^-+|-+$/g, '')
+    .replace(/\/+/g, '/')           // Collapse duplicate slashes
+    .replace(/^\/+|\/+$/g, '')      // Trim leading/trailing slashes
     .slice(0, 120) || 'page';
 
 const ensureUniqueSlug = async (base, excludeId = null) => {
@@ -47,8 +50,9 @@ export const pageValidators = [
     .withMessage('Title must be between 2 and 200 characters.'),
   body('slug')
     .optional({ checkFalsy: true })
-    .matches(/^[a-z0-9-]+$/)
-    .withMessage('Custom URL can only contain lowercase letters, numbers, and hyphens.')
+    // Updated regex to allow forward slashes: [a-z0-9\/-]
+    .matches(/^[a-z0-9\/-]+$/)
+    .withMessage('Custom URL can only contain lowercase letters, numbers, hyphens, and slashes.')
     .isLength({ max: 120 })
     .withMessage('Custom URL is too long.'),
   body('meta_title')
@@ -241,7 +245,6 @@ export const postDeletePage = async (req, res) => {
     return res.redirect('/admin/pages');
   }
 
-  // Never delete a page whose slug collides with a dedicated route.
   if (RESERVED_SLUGS.includes(page.slug)) {
     req.flash(
       'error',
@@ -259,9 +262,13 @@ export const postDeletePage = async (req, res) => {
 // ─── Public: render a page by slug ──────────────────────
 
 export const publicPage = async (req, res, next) => {
-  const slug = req.params.slug;
+  // Extract the full path (e.g. 'membership/qualifications')
+  const slug = req.path.replace(/^\//, '');
+  if (!slug) return next();
+  
   const page = await findPageBySlug(slug, true);
   if (!page) return next();
+  
   res.render('page', {
     title: page.title,
     page,
