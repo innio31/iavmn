@@ -32,6 +32,10 @@
   }
 
   var navItems = builtInNav.concat(extraNav);
+
+  // Session awareness
+  var isAdmin  = typeof currentUser !== 'undefined' && currentUser;
+  var isMember = typeof currentMember !== 'undefined' && currentMember;
 %>
 <div class="topbar">
   <div class="container topbar-inner">
@@ -49,12 +53,21 @@
         </span>
       <% } %>
     </div>
+    
     <div class="topbar-actions">
-      <% if (currentUser) { %>
-        <a href="/admin">Dashboard</a>
+      <% if (isAdmin) { %>
+        <a href="/admin">Admin Dashboard</a>
         <span class="topbar-sep">|</span>
         <a href="/logout">Logout</a>
+      <% } else if (isMember) { %>
+        <a href="/member">My Dashboard</a>
+        <span class="topbar-sep">|</span>
+        <form action="/member/logout" method="POST" style="display: inline; margin: 0;">
+          <button type="submit" style="background: none; border: none; padding: 0; color: inherit; font: inherit; cursor: pointer; text-decoration: underline;">Logout</button>
+        </form>
       <% } else { %>
+        <a href="/member/login">Member Login</a>
+        <span class="topbar-sep">|</span>
         <a href="/login">Admin Login</a>
       <% } %>
     </div>

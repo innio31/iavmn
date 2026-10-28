@@ -4525,3 +4525,11 @@ body.search-overlay-active {
   font-size: 18px;
   font-weight: 700;
 }
+/* ─── Topbar Logout Button Styling ─────────────────── */
+.topbar-actions form button {
+  color: rgba(255, 255, 255, 0.9);
+  transition: color 0.15s;
+}
+.topbar-actions form button:hover {
+  color: var(--secondary);
+}
