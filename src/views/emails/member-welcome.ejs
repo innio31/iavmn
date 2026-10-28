@@ -1,7 +1,7 @@
 <%
   var siteName = (settings && settings.site_name) || appName || 'IAVMN';
   var siteShort = (settings && settings.site_short_name) || 'IAVMN';
-  var appUrl = appUrl || (settings && settings.app_url) || 'https://iavmn.org.ng';
+  var appUrl = (settings && settings.app_url) || process.env.APP_URL || 'http://localhost:3000';
   var firstName = (member.full_name || '').split(/\s+/)[0] || 'there';
 
   var setPasswordUrl = appUrl.replace(/\/$/, '') + '/member/set-password/' + encodeURIComponent(token);
@@ -133,6 +133,22 @@
                   <%= setPasswordUrl %>
                 </a>
               </p>
+            </td>
+          </tr>
+
+          <!-- Expiry Notice -->
+          <tr>
+            <td style="padding: 0 28px 20px; text-align: center;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 14px 18px; text-align: left;">
+                    <div style="font-size: 13px; color: #856404; line-height: 1.6;">
+                      <strong>Link Expired?</strong><br>
+                      If the button above shows an error or has expired, please visit the login page and click <strong>"Forgot your password?"</strong> to generate a new link.
+                    </div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
