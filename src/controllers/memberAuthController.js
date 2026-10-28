@@ -16,8 +16,6 @@ import { getAllSettings } from '../models/settingsModel.js';
 import { sendMail } from '../services/mailer.js';
 
 // ─── Password policy ────────────────────────────────────
-// 8+ chars, at least 1 letter + 1 number.
-
 const isStrongEnough = (pwd) => {
   if (typeof pwd !== 'string') return false;
   if (pwd.length < 8 || pwd.length > 100) return false;
@@ -27,19 +25,14 @@ const isStrongEnough = (pwd) => {
 const passwordErrorMessage = 'Password must be at least 8 characters and contain at least one letter and one number.';
 
 // ─── Validation ─────────────────────────────────────────
-
 export const loginValidators = [
   body('email').trim().isEmail().withMessage('Please enter a valid email address.'),
   body('password').isLength({ min: 1 }).withMessage('Password is required.'),
 ];
 
 export const setPasswordValidators = [
-  body('password')
-    .custom((v) => isStrongEnough(v))
-    .withMessage(passwordErrorMessage),
-  body('password_confirm')
-    .custom((value, { req }) => value === req.body.password)
-    .withMessage('Passwords do not match.'),
+  body('password').custom((v) => isStrongEnough(v)).withMessage(passwordErrorMessage),
+  body('password_confirm').custom((value, { req }) => value === req.body.password).withMessage('Passwords do not match.'),
 ];
 
 export const forgotPasswordValidators = [
@@ -47,7 +40,6 @@ export const forgotPasswordValidators = [
 ];
 
 // ─── Login ──────────────────────────────────────────────
-
 export const showMemberLogin = (req, res) => {
   const next = typeof req.query.next === 'string' ? req.query.next : '';
   res.render('members/auth/login', {
@@ -76,7 +68,6 @@ export const postMemberLogin = async (req, res) => {
   const { email, password } = req.body;
   const member = await findMemberByEmail(email);
 
-  // Generic error to avoid email enumeration
   const invalid = () => {
     req.flash('error', 'Invalid email or password.');
     return res.status(422).render('members/auth/login', {
@@ -90,7 +81,6 @@ export const postMemberLogin = async (req, res) => {
 
   if (!member) return invalid();
 
-  // Member must have set a password (via welcome email) before logging in
   if (!member.password_hash) {
     req.flash('error', 'Your account is not yet activated. Check your email for the activation link, or use "Forgot password".');
     return res.status(403).render('members/auth/login', {
@@ -102,19 +92,8 @@ export const postMemberLogin = async (req, res) => {
     });
   }
 
-  if (member.status === 'suspended') {
-    req.flash('error', 'Your membership has been suspended. Please contact the Institute.');
-    return res.status(403).render('members/auth/login', {
-      layout: 'layouts/member',
-      title: 'Member Login',
-      form: { email },
-      errors: [],
-      next,
-    });
-  }
-
-  if (member.status === 'cancelled') {
-    req.flash('error', 'Your membership has been cancelled.');
+  if (member.status === 'suspended' || member.status === 'cancelled') {
+    req.flash('error', `Your membership is ${member.status}. Please contact the Institute.`);
     return res.status(403).render('members/auth/login', {
       layout: 'layouts/member',
       title: 'Member Login',
@@ -127,7 +106,6 @@ export const postMemberLogin = async (req, res) => {
   const ok = await verifyMemberPassword(password, member.password_hash);
   if (!ok) return invalid();
 
-  // Regenerate session on login to prevent fixation
   req.session.regenerate((err) => {
     if (err) {
       console.error('[member login] regenerate failed:', err);
@@ -142,9 +120,7 @@ export const postMemberLogin = async (req, res) => {
       full_name: member.full_name,
     };
 
-    touchMemberLastLogin(member.id).catch((e) =>
-      console.error('[member login] touchLastLogin failed:', e.message)
-    );
+    touchMemberLastLogin(member.id).catch((e) => console.error('[member login] touchLastLogin failed:', e.message));
 
     req.flash('success', `Welcome back, ${member.full_name.split(/\s+/)[0]}.`);
     const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/member';
@@ -161,18 +137,17 @@ export const postMemberLogout = (req, res) => {
 };
 
 // ─── Set password (from welcome email) ──────────────────
-
 export const showSetPassword = async (req, res) => {
   const token = req.params.token;
   const member = await findMemberByResetToken(token);
 
-  if (!member || !member.reset_expires_at) {
-    return res.status(404).render('errors/404', { title: 'Invalid or expired link' });
+  if (!member) {
+    return res.status(404).render('errors/404', { title: 'Invalid link' });
   }
 
+  // Check expiration
   const expiresAt = new Date(member.reset_expires_at);
   if (Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
-    // Expired — clear it and show a friendly message
     await clearResetToken(member.id);
     return res.status(410).render('members/auth/set-password-expired', {
       layout: 'layouts/member',
@@ -195,8 +170,8 @@ export const postSetPassword = async (req, res) => {
   const token = req.params.token;
   const member = await findMemberByResetToken(token);
 
-  if (!member || !member.reset_expires_at) {
-    return res.status(404).render('errors/404', { title: 'Invalid or expired link' });
+  if (!member) {
+    return res.status(404).render('errors/404', { title: 'Invalid link' });
   }
 
   const expiresAt = new Date(member.reset_expires_at);
@@ -222,13 +197,11 @@ export const postSetPassword = async (req, res) => {
   }
 
   await setMemberPassword(member.id, req.body.password);
-
   req.flash('success', 'Your password has been set. You can now log in.');
   res.redirect('/member/login');
 };
 
 // ─── Forgot password ────────────────────────────────────
-
 export const showForgotPassword = (req, res) => {
   res.render('members/auth/forgot-password', {
     layout: 'layouts/member',
@@ -254,7 +227,6 @@ export const postForgotPassword = async (req, res) => {
   const email = req.body.email.trim().toLowerCase();
   const member = await findMemberByEmail(email);
 
-  // Always show "check your email" — never reveal whether the email exists
   if (member && (member.status === 'active' || member.status === 'expired')) {
     try {
       const token = await generateResetToken(member.id, 60); // 1 hour
@@ -286,13 +258,12 @@ export const postForgotPassword = async (req, res) => {
 };
 
 // ─── Reset password (from reset email) ──────────────────
-
 export const showResetPassword = async (req, res) => {
   const token = req.params.token;
   const member = await findMemberByResetToken(token);
 
-  if (!member || !member.reset_expires_at) {
-    return res.status(404).render('errors/404', { title: 'Invalid or expired link' });
+  if (!member) {
+    return res.status(404).render('errors/404', { title: 'Invalid link' });
   }
 
   const expiresAt = new Date(member.reset_expires_at);
@@ -318,8 +289,8 @@ export const postResetPassword = async (req, res) => {
   const token = req.params.token;
   const member = await findMemberByResetToken(token);
 
-  if (!member || !member.reset_expires_at) {
-    return res.status(404).render('errors/404', { title: 'Invalid or expired link' });
+  if (!member) {
+    return res.status(404).render('errors/404', { title: 'Invalid link' });
   }
 
   const expiresAt = new Date(member.reset_expires_at);
