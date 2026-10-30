@@ -38,6 +38,30 @@ const buildVerificationUrl = (settings, memberNumber) => {
   return `${base.replace(/\/$/, '')}/verify/${encodeURIComponent(memberNumber)}`;
 };
 
+/**
+ * Draw a text block that must stay on ONE line, shrinking font size to fit.
+ * Returns the font size used.
+ */
+const drawSingleLineText = (doc, text, x, y, maxWidth, baseSize, options = {}) => {
+  const font = options.font || 'Helvetica-Bold';
+  const color = options.color || '#1B4230';
+  const align = options.align || 'center';
+
+  let size = baseSize;
+  doc.font(font).fontSize(size);
+  while (size > 6 && doc.widthOfString(text) > maxWidth) {
+    size -= 0.5;
+    doc.fontSize(size);
+  }
+  doc.fillColor(color).text(text, x, y, {
+    width: maxWidth,
+    align: align,
+    lineBreak: false,
+    ellipsis: true,
+  });
+  return size;
+};
+
 // ─── QR code image ──────────────────────────────────────
 
 export const serveQrCode = async (req, res) => {
@@ -108,8 +132,6 @@ export const downloadPublicCertificatePdf = async (req, res, next) => {
 };
 
 // ─── Certificate PDF: admin preview (with watermark) ────
-// Admins can preview any certificate, but it's visibly watermarked as
-// "PREVIEW — NOT VALID" so it can never be confused with the real thing.
 
 export const previewCertificatePdf = async (req, res) => {
   try {
@@ -157,15 +179,16 @@ const streamCertificate = async (res, member, settings, opts = {}) => {
     color: { dark: '#25573FFF', light: '#FFFFFFFF' },
   });
 
-  // Filename differs for previews
   const baseFilename = showWatermark
     ? `IAVMN-Certificate-PREVIEW-${member.member_number.replace(/[\/\\]/g, '-')}.pdf`
     : `IAVMN-Certificate-${member.member_number.replace(/[\/\\]/g, '-')}.pdf`;
 
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `inline; filename="${baseFilename}"`);
+  res.setHeader(
+    'Content-Disposition',
+    `${showWatermark ? 'inline' : 'attachment'}; filename="${baseFilename}"`
+  );
 
-  // A4 landscape
   const doc = new PDFDocument({
     size: 'A4',
     layout: 'landscape',
@@ -192,10 +215,8 @@ const streamCertificate = async (res, member, settings, opts = {}) => {
   const darkGreen = '#1B4230';
   const gold = '#B9A446';
 
-  // ─── Background ───
   doc.rect(0, 0, W, H).fill('#FFFFFF');
 
-  // ─── Outer gold double border ───
   const outerPad = 20;
   doc.lineWidth(2).strokeColor(gold).rect(outerPad, outerPad, W - outerPad * 2, H - outerPad * 2).stroke();
   doc.lineWidth(0.5).strokeColor(gold).rect(outerPad + 5, outerPad + 5, W - (outerPad + 5) * 2, H - (outerPad + 5) * 2).stroke();
@@ -288,7 +309,7 @@ const streamCertificate = async (res, member, settings, opts = {}) => {
   // ─── Footer: signatures + QR ───
   const footerY = H - innerPad - 90;
   const sigWidth = 190;
-  const sigHeight = 32;
+  const sigHeight = 44;   // <-- increased from 32 to 44
 
   // Registrar (left)
   const leftSigX = contentLeft + 20;
@@ -303,14 +324,17 @@ const streamCertificate = async (res, member, settings, opts = {}) => {
       .moveTo(leftSigX, footerY).lineTo(leftSigX + sigWidth, footerY).stroke();
   }
 
+  // Registrar name — single line, auto-shrink to fit
+  let regNameUsedSize = 9;
   if (registrarName) {
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(darkGreen)
-      .text(registrarName, leftSigX - 10, footerY + 6, {
-        width: sigWidth + 20, align: 'center', lineBreak: false, ellipsis: true,
-      });
+    regNameUsedSize = drawSingleLineText(doc, registrarName, leftSigX - 10, footerY + 6, sigWidth + 20, 9, {
+      font: 'Helvetica-Bold',
+      color: darkGreen,
+      align: 'center',
+    });
   }
   doc.font('Helvetica').fontSize(8).fillColor('#6C757D')
-    .text(registrarTitle.toUpperCase(), leftSigX - 10, footerY + (registrarName ? 20 : 6), {
+    .text(registrarTitle.toUpperCase(), leftSigX - 10, footerY + 20, {
       width: sigWidth + 20, align: 'center', characterSpacing: 0.5, lineBreak: false, ellipsis: true,
     });
 
@@ -327,14 +351,16 @@ const streamCertificate = async (res, member, settings, opts = {}) => {
       .moveTo(rightSigX, footerY).lineTo(rightSigX + sigWidth, footerY).stroke();
   }
 
+  // President name — single line, auto-shrink to fit
   if (presidentName) {
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(darkGreen)
-      .text(presidentName, rightSigX - 10, footerY + 6, {
-        width: sigWidth + 20, align: 'center', lineBreak: false, ellipsis: true,
-      });
+    drawSingleLineText(doc, presidentName, rightSigX - 10, footerY + 6, sigWidth + 20, 9, {
+      font: 'Helvetica-Bold',
+      color: darkGreen,
+      align: 'center',
+    });
   }
   doc.font('Helvetica').fontSize(8).fillColor('#6C757D')
-    .text(presidentTitle.toUpperCase(), rightSigX - 10, footerY + (presidentName ? 20 : 6), {
+    .text(presidentTitle.toUpperCase(), rightSigX - 10, footerY + 20, {
       width: sigWidth + 20, align: 'center', characterSpacing: 0.5, lineBreak: false, ellipsis: true,
     });
 
@@ -357,9 +383,8 @@ const streamCertificate = async (res, member, settings, opts = {}) => {
       align: 'center',
     });
 
-  // ─── Watermark (only for admin previews) ───
+  // ─── Watermark (admin preview only) ───
   if (showWatermark) {
-    // Diagonal "PREVIEW" text overlay
     doc.save();
     doc.rotate(-30, { origin: [centerX, H / 2] });
     doc.font('Helvetica-Bold').fontSize(120).fillColor('#DC3545')
@@ -370,7 +395,6 @@ const streamCertificate = async (res, member, settings, opts = {}) => {
       });
     doc.restore();
 
-    // Small red banner at the top
     doc.save();
     doc.rect(outerPad + 6, outerPad + 6, W - (outerPad + 6) * 2, 26).fill('#DC3545');
     doc.font('Helvetica-Bold').fontSize(11).fillColor('#FFFFFF')
