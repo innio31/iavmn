@@ -6,11 +6,12 @@
 </div>
 
 <%
-  // Build a map of group key -> group object for quick lookup
   const activeGroup = groups.find((g) => g.key === activeTab) || groups[0];
-
-  // Helper to get a setting value or empty string
   const val = (key) => (settings[key] !== undefined && settings[key] !== null) ? settings[key] : '';
+
+  // For signature fields, derive the "remove" checkbox name from the fieldName.
+  // e.g. fieldName = 'signature_registrar'  →  removeFieldName = 'remove_signature_registrar'
+  const removeNameFor = (fieldName) => 'remove_' + fieldName;
 %>
 
 <div class="admin-card">
@@ -26,26 +27,64 @@
     <% }); %>
   </nav>
 
-  <form action="/admin/settings" method="POST" class="settings-form" novalidate>
+  <form action="/admin/settings" method="POST" enctype="multipart/form-data" class="settings-form" novalidate>
     <input type="hidden" name="_tab" value="<%= activeGroup.key %>">
 
     <% activeGroup.fields.forEach((field) => { %>
       <div class="form-row">
         <label for="<%= field.name %>"><%= field.label %></label>
 
+        <%# ─── Render based on field type ─── %>
         <% if (field.type === 'textarea') { %>
+          
           <textarea
             id="<%= field.name %>"
             name="<%= field.name %>"
             rows="4"><%= val(field.name) %></textarea>
-        <% } else { %>
+
+        <% } else if (field.type === 'signature') { %>
+          
+          <%# ─── Signature upload field ─── %>
+          <% const currentPath = val(field.name); %>
+          
+          <% if (currentPath) { %>
+            <div class="current-image-block" style="margin-bottom: 14px;">
+              <span class="form-hint" style="margin-bottom: 8px; display: block;">Current signature:</span>
+              <div style="background: #f7faf9; padding: 12px; border-radius: 8px; border: 1px solid #e2e8ea; display: inline-block;">
+                <img src="<%= currentPath %>" alt="Current signature" style="max-height: 80px; max-width: 240px; display: block;">
+              </div>
+              
+              <div style="margin-top: 10px;">
+                <label class="checkbox-label" style="color: #721c24; font-size: 13px;">
+                  <input type="checkbox" name="<%= removeNameFor(field.fieldName) %>" value="1">
+                  <span>Remove this signature</span>
+                </label>
+              </div>
+            </div>
+          <% } %>
+
           <input
-            type="<%= field.type === 'url' ? 'url' : (field.type === 'email' ? 'email' : 'text') %>"
+            type="file"
+            id="<%= field.name %>"
+            name="<%= field.fieldName %>"
+            accept="image/png,image/jpeg,image/webp,image/gif">
+          
+          <span class="form-hint">
+            Upload a transparent PNG or JPG. Max 2 MB. Recommended width: 400–600px.
+            <% if (currentPath) { %>Leave empty to keep the current signature. Only upload if replacing.<% } %>
+          </span>
+
+        <% } else { %>
+          
+          <input
+            type="<%= field.type === 'url' ? 'url' : (field.type === 'email' ? 'email' : (field.type === 'number' ? 'number' : 'text')) %>"
             id="<%= field.name %>"
             name="<%= field.name %>"
             value="<%= val(field.name) %>"
             <% if (field.type === 'email') { %>inputmode="email" autocomplete="email"<% } %>
-            <% if (field.type === 'url') { %>inputmode="url"<% } %>>
+            <% if (field.type === 'url') { %>inputmode="url"<% } %>
+            <% if (field.type === 'number') { %>inputmode="decimal"<% } %>>
+
         <% } %>
 
         <% if (field.hint) { %>

@@ -6,6 +6,16 @@
   const isEligible = isActive;
 
   const verificationUrl = ((settings && settings.app_url) || '') + '/verify/' + encodeURIComponent(member.member_number);
+
+  // Signature paths
+  const regSig = settings && settings.cert_signature_registrar_path;
+  const presSig = settings && settings.cert_signature_president_path;
+
+  // Names and titles (with fallbacks)
+  const regName = (settings && settings.cert_registrar_name) || '';
+  const regTitle = (settings && settings.cert_registrar_title) || 'Registrar / Chief Executive';
+  const presName = (settings && settings.cert_president_name) || '';
+  const presTitle = (settings && settings.cert_president_title) || 'President / Chairman of Council';
 %>
 
 <div class="m-page-head">
@@ -80,25 +90,46 @@
             <% } %>
           </div>
 
-          <div class="cert-footer">
+          <%# ─── Signatures + QR row ─── %>
+          <div class="cert-signatures-row">
+
+            <%# ─── Registrar signature (left) ─── %>
             <div class="cert-signature-block">
-              <% if (settings && settings.cert_signature_path) { %>
-                <img src="<%= settings.cert_signature_path %>" alt="Signature" class="cert-signature-img">
+              <% if (regSig) { %>
+                <img src="<%= regSig %>" alt="Registrar signature" class="cert-signature-img">
               <% } else { %>
                 <div class="cert-signature-line"></div>
               <% } %>
-              <div class="cert-signature-role">Registrar / Chief Executive</div>
+              <% if (regName) { %>
+                <div class="cert-signature-name"><%= regName %></div>
+              <% } %>
+              <div class="cert-signature-role"><%= regTitle %></div>
             </div>
 
+            <%# ─── QR code (center) ─── %>
             <div class="cert-qr">
               <img
                 src="/member/certificate/qr.png"
                 alt="Verification QR code"
                 class="cert-qr-img"
-                width="100"
-                height="100">
+                width="90"
+                height="90">
               <div class="cert-qr-label">Scan to verify</div>
             </div>
+
+            <%# ─── President signature (right) ─── %>
+            <div class="cert-signature-block">
+              <% if (presSig) { %>
+                <img src="<%= presSig %>" alt="President signature" class="cert-signature-img">
+              <% } else { %>
+                <div class="cert-signature-line"></div>
+              <% } %>
+              <% if (presName) { %>
+                <div class="cert-signature-name"><%= presName %></div>
+              <% } %>
+              <div class="cert-signature-role"><%= presTitle %></div>
+            </div>
+
           </div>
 
         </div>

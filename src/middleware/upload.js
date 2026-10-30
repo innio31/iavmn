@@ -1,13 +1,6 @@
 // src/middleware/upload.js
 // Reusable file-upload middleware built on multer.
-// Each "bucket" (hero, council, posts, etc.) writes to its own folder under public/uploads/.
-//
-// Usage in a route:
-//   import { uploadHero } from '../middleware/upload.js';
-//   router.post('/admin/hero', requireLogin, uploadHero, heroValidators, postNewHero);
-//
-// In a controller, the uploaded file is available as `req.file` (single) or `req.files` (multiple).
-// Store the public URL as: /uploads/<bucket>/<filename>  → req.file.publicPath
+// Each "bucket" (hero, council, posts, signatures, etc.) writes to its own folder under public/uploads/.
 
 import multer from 'multer';
 import path from 'node:path';
@@ -22,27 +15,19 @@ const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const UPLOADS_ROOT = path.join(PROJECT_ROOT, 'public', 'uploads');
 
-// Allowed image MIME types
+// Allowed file types
 const IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-
-// Allowed document MIME types (for CVs etc.)
 const DOC_MIMES = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
-// 5 MB default
+// 5 MB default, 2 MB for signatures (smaller is better for signatures)
 const MAX_MB = Number(process.env.MAX_UPLOAD_MB) || 5;
 const MAX_BYTES = MAX_MB * 1024 * 1024;
+const SIGNATURE_MAX_BYTES = 2 * 1024 * 1024;
 
-/**
- * Ensure a directory exists (recursively).
- */
 const ensureDir = (dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 
-/**
- * Generate a safe, unique filename preserving the extension.
- * e.g. "My Photo (1).JPG" → "my-photo-1-1704123456789-a1b2c3.jpg"
- */
 const safeFilename = (originalName) => {
   const ext = path.extname(originalName).toLowerCase();
   const base = path
@@ -56,9 +41,6 @@ const safeFilename = (originalName) => {
   return `${base}-${stamp}-${rand}${ext}`;
 };
 
-/**
- * Build a storage engine that writes into `public/uploads/<bucket>/`.
- */
 const makeStorage = (bucket) => {
   const dest = path.join(UPLOADS_ROOT, bucket);
   ensureDir(dest);
@@ -74,13 +56,6 @@ const makeStorage = (bucket) => {
   });
 };
 
-/**
- * Build a multer instance for a bucket.
- * @param {string} bucket       e.g. 'hero', 'council', 'posts'
- * @param {object} opts
- * @param {string[]} opts.mimes  Allowed MIME types
- * @param {number}   opts.maxBytes
- */
 const makeUploader = (bucket, opts = {}) => {
   const mimes = opts.mimes || IMAGE_MIMES;
   const maxBytes = opts.maxBytes || MAX_BYTES;
@@ -103,10 +78,6 @@ const makeUploader = (bucket, opts = {}) => {
   });
 };
 
-/**
- * Attach a `publicPath` to the uploaded file after multer succeeds.
- * Convention: /uploads/<bucket>/<filename>
- */
 const attachPublicPath = (bucket) => (req, res, next) => {
   if (req.file) {
     req.file.publicPath = `/uploads/${bucket}/${req.file.filename}`;
@@ -130,12 +101,6 @@ const attachPublicPath = (bucket) => (req, res, next) => {
   next();
 };
 
-/**
- * Wrap multer errors into a flash message + redirect (or pass-through).
- * Must be registered AFTER the multer middleware in the route chain, e.g.:
- *   router.post('/x', uploadHero, handleUploadErrors, controller)
- * Actually — simplest: use the helper below which returns [multer, handler].
- */
 export const handleUploadErrors = (redirectTo) => (err, req, res, next) => {
   if (err && (err.code === 'LIMIT_FILE_SIZE' || err.code === 'INVALID_MIME')) {
     req.flash('error', err.code === 'LIMIT_FILE_SIZE'
@@ -162,6 +127,13 @@ export const uploadTestimonial = [testimonialMulter.single('photo'), attachPubli
 
 const brandingMulter = makeUploader('branding');
 export const uploadBranding = [brandingMulter.single('image'), attachPublicPath('branding')];
+
+// Signatures: small PNG/JPG, 2 MB max
+const signatureMulter = makeUploader('branding/signatures', {
+  mimes: IMAGE_MIMES,
+  maxBytes: SIGNATURE_MAX_BYTES,
+});
+export const uploadSignature = [signatureMulter.single('signature'), attachPublicPath('branding/signatures')];
 
 // Applications: CV + photo in one request
 const appMulter = makeUploader('applications', {

@@ -25,6 +25,7 @@ import {
 import {
   showSettings,
   postSettings,
+  settingsUpload,
 } from './controllers/settingsController.js';
 
 import {
@@ -363,7 +364,12 @@ router.get('/admin', requireLogin, showDashboard);
 
 // ─── Admin: settings ────────────────────────────────────
 router.get('/admin/settings', requireLogin, showSettings);
-router.post('/admin/settings', requireLogin, postSettings);
+router.post(
+  '/admin/settings', 
+  requireLogin, 
+  settingsUpload, 
+  postSettings
+);
 
 // ─── Admin: hero slides ─────────────────────────────────
 router.get('/admin/hero', requireLogin, listHero);

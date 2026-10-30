@@ -2,6 +2,7 @@
 // App setup only: middleware, sessions, flash, static files, EJS, router mount, error handlers.
 
 import express from 'express';
+import cors from 'cors';
 import session from 'express-session';
 import MySQLStoreFactory from 'express-mysql-session';
 import expressLayouts from 'express-ejs-layouts';
@@ -18,6 +19,7 @@ import loadMenuPages from './src/middleware/loadMenuPages.js';
 import notificationCounts from './src/middleware/notificationCounts.js';
 import { loadMember } from './src/middleware/memberAuth.js';
 import router from './src/routes.js';
+import apiRouter from './src/routes/api.js';
 
 dotenv.config();
 
@@ -29,8 +31,6 @@ const PORT = process.env.PORT || 3000;
 const isProd = process.env.NODE_ENV === 'production';
 
 // ─── Trust proxy (HostAfrica runs nginx in front of Node) ────
-// Without this, Express thinks requests are HTTP even when the
-// user is on HTTPS, and Secure session cookies never get set.
 app.set('trust proxy', 1);
 
 // ─── View engine ────────────────────────────────────────
@@ -59,6 +59,22 @@ app.use(
     },
   })
 );
+
+// ─── API (mobile) ───────────────────────────────────────
+// Mounted BEFORE sessions/flash so API requests don't touch the session store.
+// CORS is scoped to /api/v1 only; the web app never needs it.
+const allowedOrigins = (process.env.API_CORS_ORIGINS || '*')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+app.use(
+  '/api/v1',
+  cors({
+    origin: allowedOrigins.includes('*') ? true : allowedOrigins,
+    credentials: false,
+    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+app.use('/api/v1', apiRouter);
 
 // ─── Static files ───────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
@@ -127,6 +143,20 @@ app.use('/', router);
 // ─── 404 ────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).render('errors/404', { title: 'Page Not Found' });
+});
+
+// ─── API error passthrough (before the web 500 handler) ─
+// Ensures /api/* requests always get JSON, even for errors thrown
+// before the request reaches the API router (e.g. bad JSON body).
+app.use((err, req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    const status = err.status || 500;
+    return res.status(status).json({
+      error: status >= 500 ? 'Something went wrong.' : err.message || 'Request failed.',
+      code: status === 400 && err.type === 'entity.parse.failed' ? 'INVALID_JSON' : 'ERROR',
+    });
+  }
+  return next(err);
 });
 
 // ─── 500 ────────────────────────────────────────────────

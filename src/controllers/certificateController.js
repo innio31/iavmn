@@ -1,6 +1,5 @@
 // src/controllers/certificateController.js
 // Generates the member certificate as a PDF (pdfkit) and the QR code image (qrcode).
-// Both are streamed directly to the client — no files written to disk.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,10 +24,6 @@ const fmtDate = (dt) => {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
 };
 
-/**
- * Resolve a public path (e.g. /uploads/branding/logo.png) to an absolute filesystem path.
- * Returns null if the file doesn't exist.
- */
 const resolvePublicFile = (publicPath) => {
   if (!publicPath || typeof publicPath !== 'string') return null;
   if (!publicPath.startsWith('/')) return null;
@@ -38,9 +33,6 @@ const resolvePublicFile = (publicPath) => {
   return abs;
 };
 
-/**
- * Build the public verification URL for a member number.
- */
 const buildVerificationUrl = (settings, memberNumber) => {
   const base = (settings && settings.app_url) || process.env.APP_URL || 'http://localhost:3000';
   return `${base.replace(/\/$/, '')}/verify/${encodeURIComponent(memberNumber)}`;
@@ -48,10 +40,6 @@ const buildVerificationUrl = (settings, memberNumber) => {
 
 // ─── QR code image ──────────────────────────────────────
 
-/**
- * Serve a QR code PNG for a member (used in the preview page and the PDF).
- * Route: GET /member/certificate/qr.png  (requires member login)
- */
 export const serveQrCode = async (req, res) => {
   try {
     const member = await findMemberById(req.member.id);
@@ -82,10 +70,6 @@ export const serveQrCode = async (req, res) => {
 
 // ─── Certificate PDF ────────────────────────────────────
 
-/**
- * Stream a certificate PDF for the logged-in member.
- * Route: GET /member/certificate/download.pdf
- */
 export const downloadCertificatePdf = async (req, res) => {
   try {
     const member = await findMemberById(req.member.id);
@@ -107,10 +91,6 @@ export const downloadCertificatePdf = async (req, res) => {
   }
 };
 
-/**
- * Public certificate download by member number (used optionally for verified viewing).
- * Not currently routed — kept as a utility for later.
- */
 export const downloadPublicCertificatePdf = async (req, res, next) => {
   try {
     const member = await findMemberByNumber(req.params.memberNumber);
@@ -132,7 +112,13 @@ const streamCertificate = async (res, member, settings) => {
   const siteShort = (settings && settings.site_short_name) || 'IAVMN';
 
   const logoPath = resolvePublicFile(settings && settings.site_logo_path);
-  const signaturePath = resolvePublicFile(settings && settings.cert_signature_path);
+  const registrarSigPath = resolvePublicFile(settings && settings.cert_signature_registrar_path);
+  const presidentSigPath = resolvePublicFile(settings && settings.cert_signature_president_path);
+
+  const registrarName = (settings && settings.cert_registrar_name) || '';
+  const registrarTitle = (settings && settings.cert_registrar_title) || 'Registrar / Chief Executive';
+  const presidentName = (settings && settings.cert_president_name) || '';
+  const presidentTitle = (settings && settings.cert_president_title) || 'President / Chairman of Council';
 
   const verificationUrl = buildVerificationUrl(settings, member.member_number);
 
@@ -167,17 +153,18 @@ const streamCertificate = async (res, member, settings) => {
   const W = doc.page.width;
   const H = doc.page.height;
 
+  // ─── Colors ───
+  const primaryGreen = '#25573F';
+  const darkGreen = '#1B4230';
+  const gold = '#B9A446';
+
   // ─── Background ───
   doc.rect(0, 0, W, H).fill('#FFFFFF');
 
   // ─── Outer gold double border ───
   const outerPad = 20;
-  const outerBorderColor = '#B9A446';
-  const primaryGreen = '#25573F';
-  const darkGreen = '#1B4230';
-
-  doc.lineWidth(2).strokeColor(outerBorderColor).rect(outerPad, outerPad, W - outerPad * 2, H - outerPad * 2).stroke();
-  doc.lineWidth(0.5).strokeColor(outerBorderColor).rect(outerPad + 5, outerPad + 5, W - (outerPad + 5) * 2, H - (outerPad + 5) * 2).stroke();
+  doc.lineWidth(2).strokeColor(gold).rect(outerPad, outerPad, W - outerPad * 2, H - outerPad * 2).stroke();
+  doc.lineWidth(0.5).strokeColor(gold).rect(outerPad + 5, outerPad + 5, W - (outerPad + 5) * 2, H - (outerPad + 5) * 2).stroke();
 
   // Inner thin green line
   const innerPad = 38;
@@ -189,17 +176,15 @@ const streamCertificate = async (res, member, settings) => {
   const contentWidth = contentRight - contentLeft;
   const centerX = W / 2;
 
-  let cursorY = innerPad + 40;
+  let cursorY = innerPad + 34;
 
   // ─── Header: logo + org name ───
   if (logoPath) {
     try {
-      // Center the logo — max height 60pt
-      doc.image(logoPath, centerX - 60, cursorY, { fit: [120, 60], align: 'center', valign: 'center' });
-      cursorY += 68;
+      doc.image(logoPath, centerX - 60, cursorY, { fit: [120, 55], align: 'center', valign: 'center' });
+      cursorY += 62;
     } catch (e) {
-      // Skip logo if it can't be decoded (e.g. SVG or unsupported format)
-      cursorY += 8;
+      cursorY += 6;
     }
   } else {
     doc
@@ -207,7 +192,7 @@ const streamCertificate = async (res, member, settings) => {
       .fontSize(20)
       .fillColor(primaryGreen)
       .text(siteShort, contentLeft, cursorY, { width: contentWidth, align: 'center' });
-    cursorY += 28;
+    cursorY += 26;
   }
 
   doc
@@ -215,45 +200,44 @@ const streamCertificate = async (res, member, settings) => {
     .fontSize(9)
     .fillColor('#6C757D')
     .text(siteName.toUpperCase(), contentLeft, cursorY, { width: contentWidth, align: 'center', characterSpacing: 1.5 });
-  cursorY += 26;
+  cursorY += 24;
 
   // ─── Title ───
   doc
     .font('Times-Bold')
-    .fontSize(34)
+    .fontSize(32)
     .fillColor(primaryGreen)
     .text('Certificate of Membership', contentLeft, cursorY, { width: contentWidth, align: 'center' });
-  cursorY += 44;
+  cursorY += 40;
 
   doc
     .font('Helvetica')
-    .fontSize(11)
+    .fontSize(10)
     .fillColor('#6C757D')
     .text('THIS CERTIFIES THAT', contentLeft, cursorY, { width: contentWidth, align: 'center', characterSpacing: 2 });
-  cursorY += 24;
+  cursorY += 22;
 
-  // ─── Member name (prominent) ───
+  // ─── Member name ───
   doc
     .font('Times-Bold')
-    .fontSize(38)
+    .fontSize(36)
     .fillColor(darkGreen)
     .text(member.full_name, contentLeft + 30, cursorY, { width: contentWidth - 60, align: 'center' });
-  cursorY += 52;
+  cursorY += 48;
 
-  // Underline below the name
   const nameLineWidth = Math.min(contentWidth - 120, 460);
   doc
     .lineWidth(1.5)
-    .strokeColor(outerBorderColor)
+    .strokeColor(gold)
     .moveTo(centerX - nameLineWidth / 2, cursorY)
     .lineTo(centerX + nameLineWidth / 2, cursorY)
     .stroke();
-  cursorY += 22;
+  cursorY += 20;
 
   // ─── Body text ───
   doc
     .font('Helvetica')
-    .fontSize(12)
+    .fontSize(11)
     .fillColor('#212529')
     .text(
       'is a registered member of the Institute of Assets & Value Management Nigeria, holding the grade of',
@@ -261,22 +245,22 @@ const streamCertificate = async (res, member, settings) => {
       cursorY,
       { width: contentWidth - 160, align: 'center', lineGap: 3 }
     );
-  cursorY += 32;
+  cursorY += 28;
 
   // ─── Tier ribbon ───
   const tierText = (member.tier_name || 'Member').toUpperCase();
-  doc.font('Helvetica-Bold').fontSize(16);
-  const tierWidth = doc.widthOfString(tierText) + 60;
+  doc.font('Helvetica-Bold').fontSize(15);
+  const tierWidth = doc.widthOfString(tierText) + 56;
   const tierX = centerX - tierWidth / 2;
   const tierY = cursorY;
-  const tierH = 30;
-  doc.roundedRect(tierX, tierY, tierWidth, tierH, 15).fill(primaryGreen);
+  const tierH = 28;
+  doc.roundedRect(tierX, tierY, tierWidth, tierH, 14).fill(primaryGreen);
   doc
     .fillColor('#FFFFFF')
     .font('Helvetica-Bold')
-    .fontSize(16)
-    .text(tierText, tierX, tierY + 8, { width: tierWidth, align: 'center' });
-  cursorY += tierH + 20;
+    .fontSize(15)
+    .text(tierText, tierX, tierY + 7, { width: tierWidth, align: 'center' });
+  cursorY += tierH + 18;
 
   // ─── Meta line (member number, issue, expiry) ───
   const metaParts = [
@@ -288,60 +272,119 @@ const streamCertificate = async (res, member, settings) => {
   }
   doc
     .font('Helvetica')
-    .fontSize(10)
+    .fontSize(9.5)
     .fillColor('#495057')
     .text(metaParts.join('     •     '), contentLeft + 40, cursorY, {
       width: contentWidth - 80,
       align: 'center',
     });
-  cursorY += 30;
+  cursorY += 26;
 
-  // ─── Footer: signature (left) + QR (right) ───
-  const footerY = H - innerPad - 110;
+  // ─── Footer: signatures + QR ───
+  const footerY = H - innerPad - 90;
+  const sigWidth = 190;
+  const sigHeight = 32;
 
-  // Signature block (left)
-  const sigLeft = contentLeft + 20;
-  const sigWidth = 220;
+  // Left side: Registrar signature
+  const leftSigX = contentLeft + 20;
+  const leftSigCenterX = leftSigX + sigWidth / 2;
 
-  if (signaturePath) {
+  if (registrarSigPath) {
     try {
-      doc.image(signaturePath, sigLeft, footerY - 36, { fit: [180, 40], align: 'left' });
+      doc.image(registrarSigPath, leftSigX, footerY - sigHeight - 2, {
+        fit: [sigWidth, sigHeight],
+        align: 'center',
+        valign: 'bottom',
+      });
     } catch (e) {
-      // Skip if not a supported image format
+      // Skip if signature image not readable
     }
   } else {
     doc
-      .lineWidth(1)
+      .lineWidth(0.8)
       .strokeColor(primaryGreen)
-      .moveTo(sigLeft, footerY)
-      .lineTo(sigLeft + sigWidth, footerY)
+      .moveTo(leftSigX, footerY)
+      .lineTo(leftSigX + sigWidth, footerY)
       .stroke();
   }
 
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(9)
-    .fillColor('#25573F')
-    .text('REGISTRAR / CHIEF EXECUTIVE', sigLeft, footerY + 8, {
-      width: sigWidth,
-      align: 'left',
-      characterSpacing: 0.8,
-    });
-
+  // Registrar name
+  if (registrarName) {
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(9)
+      .fillColor(darkGreen)
+      .text(registrarName, leftSigX - 10, footerY + 6, {
+        width: sigWidth + 20,
+        align: 'center',
+        lineBreak: false,
+        ellipsis: true,
+      });
+  }
   doc
     .font('Helvetica')
     .fontSize(8)
     .fillColor('#6C757D')
-    .text(siteShort, sigLeft, footerY + 22, {
-      width: sigWidth,
-      align: 'left',
-      characterSpacing: 0.6,
+    .text(registrarTitle.toUpperCase(), leftSigX - 10, footerY + (registrarName ? 20 : 6), {
+      width: sigWidth + 20,
+      align: 'center',
+      characterSpacing: 0.5,
+      lineBreak: false,
+      ellipsis: true,
     });
 
-  // QR block (right)
-  const qrSize = 74;
-  const qrX = contentRight - qrSize - 20;
-  const qrY = footerY - 30;
+  // Right side: President signature
+  const rightSigX = contentRight - sigWidth - 20;
+  const rightSigCenterX = rightSigX + sigWidth / 2;
+
+  if (presidentSigPath) {
+    try {
+      doc.image(presidentSigPath, rightSigX, footerY - sigHeight - 2, {
+        fit: [sigWidth, sigHeight],
+        align: 'center',
+        valign: 'bottom',
+      });
+    } catch (e) {
+      // Skip
+    }
+  } else {
+    doc
+      .lineWidth(0.8)
+      .strokeColor(primaryGreen)
+      .moveTo(rightSigX, footerY)
+      .lineTo(rightSigX + sigWidth, footerY)
+      .stroke();
+  }
+
+  // President name
+  if (presidentName) {
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(9)
+      .fillColor(darkGreen)
+      .text(presidentName, rightSigX - 10, footerY + 6, {
+        width: sigWidth + 20,
+        align: 'center',
+        lineBreak: false,
+        ellipsis: true,
+      });
+  }
+  doc
+    .font('Helvetica')
+    .fontSize(8)
+    .fillColor('#6C757D')
+    .text(presidentTitle.toUpperCase(), rightSigX - 10, footerY + (presidentName ? 20 : 6), {
+      width: sigWidth + 20,
+      align: 'center',
+      characterSpacing: 0.5,
+      lineBreak: false,
+      ellipsis: true,
+    });
+
+  // Center: QR code
+  const qrSize = 66;
+  const qrX = centerX - qrSize / 2;
+  const qrY = footerY - qrSize + 4;
 
   doc.image(qrPng, qrX, qrY, { fit: [qrSize, qrSize] });
 
@@ -349,8 +392,8 @@ const streamCertificate = async (res, member, settings) => {
     .font('Helvetica-Bold')
     .fontSize(7)
     .fillColor('#6C757D')
-    .text('SCAN TO VERIFY', qrX, qrY + qrSize + 4, {
-      width: qrSize,
+    .text('SCAN TO VERIFY', qrX - 20, qrY + qrSize + 4, {
+      width: qrSize + 40,
       align: 'center',
       characterSpacing: 0.6,
     });
@@ -358,13 +401,12 @@ const streamCertificate = async (res, member, settings) => {
   // ─── Verification URL at very bottom center ───
   doc
     .font('Helvetica')
-    .fontSize(7.5)
+    .fontSize(7)
     .fillColor('#6C757D')
-    .text(`Verification: ${verificationUrl}`, contentLeft + 40, H - innerPad - 22, {
+    .text(`Verification: ${verificationUrl}`, contentLeft + 40, H - innerPad - 20, {
       width: contentWidth - 80,
       align: 'center',
     });
 
-  // ─── Close ───
   doc.end();
 };

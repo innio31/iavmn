@@ -1,9 +1,10 @@
 // src/controllers/settingsController.js
 // Admin: view and edit site-wide settings.
 
-import { validationResult } from 'express-validator';
-import { getAllSettings, setManySettings } from '../models/settingsModel.js';
+import { body, validationResult } from 'express-validator';
+import { getAllSettings, setManySettings, setSetting } from '../models/settingsModel.js';
 import { clearSettingsCache } from '../middleware/loadSettings.js';
+import { deleteUploadedFile } from '../utils/fileCleanup.js';
 
 // Groups of settings shown as separate tabs on the settings page.
 // Order matters — fields render in this order.
@@ -58,6 +59,19 @@ const SETTING_GROUPS = [
     fields: [
       { name: 'paystack_enabled', label: 'Paystack enabled (1/0)', type: 'text', hint: 'Set to 1 to enable payments.' },
       { name: 'currency',         label: 'Currency code',          type: 'text', hint: 'e.g. NGN' },
+      { name: 'registration_form_fee', label: 'Registration form fee', type: 'number', hint: 'Flat fee added to all tiers at checkout. e.g. 20000.' },
+    ],
+  },
+  {
+    key: 'certificate',
+    label: 'Certificate',
+    fields: [
+      { name: 'cert_registrar_name',  label: 'Registrar name',  type: 'text' },
+      { name: 'cert_registrar_title', label: 'Registrar title', type: 'text' },
+      { name: 'cert_signature_registrar_path', label: 'Registrar signature', type: 'signature', fieldName: 'signature_registrar' },
+      { name: 'cert_president_name',  label: 'President name',  type: 'text' },
+      { name: 'cert_president_title', label: 'President title', type: 'text' },
+      { name: 'cert_signature_president_path', label: 'President signature', type: 'signature', fieldName: 'signature_president' },
     ],
   },
   {
@@ -67,11 +81,9 @@ const SETTING_GROUPS = [
       { name: 'analytics_enabled',   label: 'Analytics enabled (1/0)',       type: 'text',  hint: 'Set to 1 to load the Google Analytics snippet on public pages.' },
       { name: 'analytics_ga4_id',    label: 'GA4 Measurement ID',            type: 'text',  hint: 'Looks like G-XXXXXXXXXX. Get it from analytics.google.com → Admin → Data Streams.' },
       { name: 'analytics_require_consent', label: 'Require cookie consent (1/0)', type: 'text', hint: 'If 1, GA4 will only load after the visitor accepts cookies.' },
-
       { name: 'seo_default_meta_description', label: 'Default meta description', type: 'textarea', hint: 'Fallback description used when a page does not have its own. 120–160 characters is ideal.' },
       { name: 'seo_default_og_image', label: 'Default share image URL',      type: 'text',  hint: 'Full URL or /uploads/... path. Recommended 1200×630 pixels.' },
       { name: 'seo_twitter_handle',  label: 'X / Twitter handle',            type: 'text',  hint: 'e.g. @iavmn — used in Twitter Card tags.' },
-
       { name: 'seo_organization_name',    label: 'Organization name',        type: 'text', hint: 'Used in Schema.org structured data.' },
       { name: 'seo_organization_logo',    label: 'Organization logo URL',    type: 'text', hint: 'Used in Schema.org structured data. Square or horizontal PNG.' },
       { name: 'seo_organization_country', label: 'Organization country',     type: 'text', hint: 'Two-letter ISO code, e.g. NG.' },
@@ -115,8 +127,12 @@ export const showSettings = async (req, res) => {
 };
 
 // ─── POST /admin/settings ───────────────────────────────
+// This controller handles BOTH text fields and file uploads.
+// The route will use multer.fields() to accept the two signature files.
 export const postSettings = async (req, res) => {
-  // Build an object of only the keys we know about (ignore anything else).
+  const activeTab = typeof req.body._tab === 'string' ? req.body._tab : '';
+
+  // Build an object of text updates from the body (ignore files).
   const updates = {};
   for (const key of ALL_KEYS) {
     if (Object.prototype.hasOwnProperty.call(req.body, key)) {
@@ -124,7 +140,7 @@ export const postSettings = async (req, res) => {
     }
   }
 
-  // Normalize hex colors to lowercase, ensure they start with #
+  // Normalize colors, GA4 ID, twitter handle
   ['pwa_theme_color', 'pwa_background_color'].forEach((key) => {
     if (updates[key]) {
       let v = updates[key].trim();
@@ -133,22 +149,118 @@ export const postSettings = async (req, res) => {
     }
   });
 
-  // Normalize GA4 ID to uppercase (G-ABC123, not g-abc123)
   if (updates.analytics_ga4_id) {
     updates.analytics_ga4_id = updates.analytics_ga4_id.toUpperCase();
   }
 
-  // Normalize twitter handle to always start with @
   if (updates.seo_twitter_handle) {
     let h = updates.seo_twitter_handle.trim();
     if (h && !h.startsWith('@')) h = '@' + h;
     updates.seo_twitter_handle = h;
   }
 
+  // Save the text settings
   await setManySettings(updates);
+
+  // ─── Handle signature file uploads ───
+  if (activeTab === 'certificate' && req.files) {
+    const currentSettings = await getAllSettings();
+
+    // Registrar signature
+    if (req.files.signature_registrar && req.files.signature_registrar[0]) {
+      const newFile = req.files.signature_registrar[0];
+      const newPath = `/uploads/branding/signatures/${newFile.filename}`;
+      const oldPath = currentSettings.cert_signature_registrar_path;
+
+      await setSetting('cert_signature_registrar_path', newPath);
+
+      // Clean up the old file
+      if (oldPath && oldPath !== newPath) {
+        await deleteUploadedFile(oldPath, ['branding']);
+      }
+    }
+
+    // President signature
+    if (req.files.signature_president && req.files.signature_president[0]) {
+      const newFile = req.files.signature_president[0];
+      const newPath = `/uploads/branding/signatures/${newFile.filename}`;
+      const oldPath = currentSettings.cert_signature_president_path;
+
+      await setSetting('cert_signature_president_path', newPath);
+
+      if (oldPath && oldPath !== newPath) {
+        await deleteUploadedFile(oldPath, ['branding']);
+      }
+    }
+
+    // Handle removal requests
+    // (If the form sends `remove_signature_registrar=1`, delete the file and clear the setting)
+    if (req.body.remove_signature_registrar === '1') {
+      const oldPath = currentSettings.cert_signature_registrar_path;
+      if (oldPath) {
+        await deleteUploadedFile(oldPath, ['branding']);
+      }
+      await setSetting('cert_signature_registrar_path', '');
+    }
+
+    if (req.body.remove_signature_president === '1') {
+      const oldPath = currentSettings.cert_signature_president_path;
+      if (oldPath) {
+        await deleteUploadedFile(oldPath, ['branding']);
+      }
+      await setSetting('cert_signature_president_path', '');
+    }
+  }
+
   clearSettingsCache();
 
   req.flash('success', 'Settings saved.');
-  const tab = typeof req.body._tab === 'string' ? req.body._tab : '';
-  res.redirect('/admin/settings' + (tab ? `?tab=${encodeURIComponent(tab)}` : ''));
+  res.redirect('/admin/settings' + (activeTab ? `?tab=${encodeURIComponent(activeTab)}` : ''));
 };
+
+// ─── Signatures upload middleware ───────────────────────
+// (Defined here so the route can wire it in before the controller runs)
+import multer from 'multer';
+import path from 'node:path';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+const SIG_DIR = path.join(PROJECT_ROOT, 'public', 'uploads', 'branding', 'signatures');
+
+if (!fs.existsSync(SIG_DIR)) fs.mkdirSync(SIG_DIR, { recursive: true });
+
+const sigStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (!fs.existsSync(SIG_DIR)) fs.mkdirSync(SIG_DIR, { recursive: true });
+    cb(null, SIG_DIR);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const stamp = Date.now();
+    const rand = crypto.randomBytes(3).toString('hex');
+    cb(null, `signature-${stamp}-${rand}${ext}`);
+  },
+});
+
+const sigUpload = multer({
+  storage: sigStorage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error('Signature must be JPG, PNG, WEBP, or GIF.'));
+    }
+    cb(null, true);
+  },
+});
+
+// Export this so routes.js can use it
+export const settingsUpload = sigUpload.fields([
+  { name: 'signature_registrar', maxCount: 1 },
+  { name: 'signature_president', maxCount: 1 },
+]);
