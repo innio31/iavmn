@@ -219,6 +219,7 @@ import {
 import {
   downloadCertificatePdf,
   serveQrCode,
+  previewCertificatePdf,
 } from './controllers/certificateController.js';
 
 import { showVerifyPage } from './controllers/verifyController.js';
@@ -521,6 +522,7 @@ router.post('/admin/applications/:id/delete', requireLogin, postDeleteApplicatio
 
 // ─── Admin: members ─────────────────────────────────────
 router.get('/admin/members', requireLogin, listMembersAdmin);
+router.get('/admin/members/:id/preview-certificate', requireLogin, previewCertificatePdf);
 router.get('/admin/members/:id', requireLogin, showMemberAdmin);
 router.post(
   '/admin/members/:id',

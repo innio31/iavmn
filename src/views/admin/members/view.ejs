@@ -32,6 +32,7 @@
     : null;
   const isExpired = days !== null && days <= 0;
   const isExpiringSoon = days !== null && days > 0 && days <= 60;
+  const isActive = member.status === 'active';
 %>
 
 <div class="page-header">
@@ -177,6 +178,40 @@
   </div>
 </div>
 
+<%# ─── Certificate Preview Card ─── %>
+<div class="admin-card" style="border-color: #dfeae8; background: #f9fbfa;">
+  <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+    <div>
+      <h3 class="admin-card-title" style="margin: 0 0 4px;">Certificate</h3>
+      <p class="text-muted" style="margin: 0; font-size: 14px;">
+        Preview what this member's certificate looks like. The preview is watermarked — the real PDF is unwatermarked.
+      </p>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <a 
+        href="/admin/members/<%= member.id %>/preview-certificate" 
+        target="_blank" 
+        rel="noopener" 
+        class="btn btn-outline">
+        Preview Certificate (PDF)
+      </a>
+      <a 
+        href="/verify/<%= encodeURIComponent(member.member_number) %>" 
+        target="_blank" 
+        rel="noopener" 
+        class="btn btn-outline">
+        Verification Page
+      </a>
+    </div>
+  </div>
+  <% if (!isActive) { %>
+    <p class="text-muted" style="margin: 12px 0 0; font-size: 13px; padding: 10px 14px; background: #fff3cd; color: #856404; border-radius: 6px;">
+      <strong>Note:</strong> This member's status is "<%= statusLabel(member.status) %>". The certificate preview will still render,
+      but the member cannot download the real certificate until they are Active.
+    </p>
+  <% } %>
+</div>
+
 <%# ─── Linked application ─── %>
 <% if (typeof application !== 'undefined' && application) { %>
   <div class="admin-card">
@@ -296,10 +331,6 @@
         <button type="submit" class="btn btn-sm btn-outline">Mark expired</button>
       </form>
     <% } %>
-
-    <a href="/verify/<%= encodeURIComponent(member.member_number) %>" target="_blank" rel="noopener" class="btn btn-sm btn-outline">
-      Public verification page
-    </a>
   </div>
 </div>
 

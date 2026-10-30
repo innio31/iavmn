@@ -68,7 +68,7 @@ export const serveQrCode = async (req, res) => {
   }
 };
 
-// ─── Certificate PDF ────────────────────────────────────
+// ─── Certificate PDF: member download ───────────────────
 
 export const downloadCertificatePdf = async (req, res) => {
   try {
@@ -81,7 +81,7 @@ export const downloadCertificatePdf = async (req, res) => {
     }
 
     const settings = await getAllSettings();
-    await streamCertificate(res, member, settings);
+    await streamCertificate(res, member, settings, { watermark: false });
   } catch (err) {
     console.error('[certificate pdf] failed:', err.message);
     if (!res.headersSent) {
@@ -91,6 +91,8 @@ export const downloadCertificatePdf = async (req, res) => {
   }
 };
 
+// ─── Certificate PDF: public download (by member number) ─
+
 export const downloadPublicCertificatePdf = async (req, res, next) => {
   try {
     const member = await findMemberByNumber(req.params.memberNumber);
@@ -98,16 +100,41 @@ export const downloadPublicCertificatePdf = async (req, res, next) => {
     if (member.status !== 'active') return next();
 
     const settings = await getAllSettings();
-    await streamCertificate(res, member, settings);
+    await streamCertificate(res, member, settings, { watermark: false });
   } catch (err) {
     console.error('[public certificate] failed:', err.message);
     next(err);
   }
 };
 
+// ─── Certificate PDF: admin preview (with watermark) ────
+// Admins can preview any certificate, but it's visibly watermarked as
+// "PREVIEW — NOT VALID" so it can never be confused with the real thing.
+
+export const previewCertificatePdf = async (req, res) => {
+  try {
+    const member = await findMemberById(req.params.id);
+    if (!member) {
+      req.flash('error', 'Member not found.');
+      return res.redirect('/admin/members');
+    }
+
+    const settings = await getAllSettings();
+    await streamCertificate(res, member, settings, { watermark: true });
+  } catch (err) {
+    console.error('[preview certificate] failed:', err.message);
+    if (!res.headersSent) {
+      req.flash('error', 'Could not generate the certificate preview.');
+      res.redirect('/admin/members');
+    }
+  }
+};
+
 // ─── Core PDF rendering ─────────────────────────────────
 
-const streamCertificate = async (res, member, settings) => {
+const streamCertificate = async (res, member, settings, opts = {}) => {
+  const showWatermark = Boolean(opts.watermark);
+
   const siteName = (settings && settings.site_name) || 'Institute of Assets & Value Management Nigeria';
   const siteShort = (settings && settings.site_short_name) || 'IAVMN';
 
@@ -130,20 +157,28 @@ const streamCertificate = async (res, member, settings) => {
     color: { dark: '#25573FFF', light: '#FFFFFFFF' },
   });
 
-  const filename = `IAVMN-Certificate-${member.member_number.replace(/[\/\\]/g, '-')}.pdf`;
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  // Filename differs for previews
+  const baseFilename = showWatermark
+    ? `IAVMN-Certificate-PREVIEW-${member.member_number.replace(/[\/\\]/g, '-')}.pdf`
+    : `IAVMN-Certificate-${member.member_number.replace(/[\/\\]/g, '-')}.pdf`;
 
-  // A4 landscape: 842 x 595 points
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${baseFilename}"`);
+
+  // A4 landscape
   const doc = new PDFDocument({
     size: 'A4',
     layout: 'landscape',
     margins: { top: 0, bottom: 0, left: 0, right: 0 },
     info: {
-      Title: `IAVMN Certificate — ${member.full_name}`,
+      Title: showWatermark
+        ? `IAVMN Certificate PREVIEW — ${member.full_name}`
+        : `IAVMN Certificate — ${member.full_name}`,
       Author: siteName,
-      Subject: 'Certificate of Membership',
-      Keywords: `certificate, membership, ${siteShort}, ${member.member_number}`,
+      Subject: showWatermark ? 'Certificate Preview (NOT VALID)' : 'Certificate of Membership',
+      Keywords: showWatermark
+        ? `preview, not valid, ${member.member_number}`
+        : `certificate, membership, ${siteShort}, ${member.member_number}`,
       Creator: siteShort,
     },
   });
@@ -153,7 +188,6 @@ const streamCertificate = async (res, member, settings) => {
   const W = doc.page.width;
   const H = doc.page.height;
 
-  // ─── Colors ───
   const primaryGreen = '#25573F';
   const darkGreen = '#1B4230';
   const gold = '#B9A446';
@@ -166,11 +200,9 @@ const streamCertificate = async (res, member, settings) => {
   doc.lineWidth(2).strokeColor(gold).rect(outerPad, outerPad, W - outerPad * 2, H - outerPad * 2).stroke();
   doc.lineWidth(0.5).strokeColor(gold).rect(outerPad + 5, outerPad + 5, W - (outerPad + 5) * 2, H - (outerPad + 5) * 2).stroke();
 
-  // Inner thin green line
   const innerPad = 38;
   doc.lineWidth(0.6).strokeColor(primaryGreen).rect(innerPad, innerPad, W - innerPad * 2, H - innerPad * 2).stroke();
 
-  // ─── Content area ───
   const contentLeft = innerPad + 40;
   const contentRight = W - innerPad - 40;
   const contentWidth = contentRight - contentLeft;
@@ -178,7 +210,7 @@ const streamCertificate = async (res, member, settings) => {
 
   let cursorY = innerPad + 34;
 
-  // ─── Header: logo + org name ───
+  // ─── Header ───
   if (logoPath) {
     try {
       doc.image(logoPath, centerX - 60, cursorY, { fit: [120, 55], align: 'center', valign: 'center' });
@@ -187,62 +219,41 @@ const streamCertificate = async (res, member, settings) => {
       cursorY += 6;
     }
   } else {
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(20)
-      .fillColor(primaryGreen)
+    doc.font('Helvetica-Bold').fontSize(20).fillColor(primaryGreen)
       .text(siteShort, contentLeft, cursorY, { width: contentWidth, align: 'center' });
     cursorY += 26;
   }
 
-  doc
-    .font('Helvetica')
-    .fontSize(9)
-    .fillColor('#6C757D')
+  doc.font('Helvetica').fontSize(9).fillColor('#6C757D')
     .text(siteName.toUpperCase(), contentLeft, cursorY, { width: contentWidth, align: 'center', characterSpacing: 1.5 });
   cursorY += 24;
 
   // ─── Title ───
-  doc
-    .font('Times-Bold')
-    .fontSize(32)
-    .fillColor(primaryGreen)
+  doc.font('Times-Bold').fontSize(32).fillColor(primaryGreen)
     .text('Certificate of Membership', contentLeft, cursorY, { width: contentWidth, align: 'center' });
   cursorY += 40;
 
-  doc
-    .font('Helvetica')
-    .fontSize(10)
-    .fillColor('#6C757D')
+  doc.font('Helvetica').fontSize(10).fillColor('#6C757D')
     .text('THIS CERTIFIES THAT', contentLeft, cursorY, { width: contentWidth, align: 'center', characterSpacing: 2 });
   cursorY += 22;
 
   // ─── Member name ───
-  doc
-    .font('Times-Bold')
-    .fontSize(36)
-    .fillColor(darkGreen)
+  doc.font('Times-Bold').fontSize(36).fillColor(darkGreen)
     .text(member.full_name, contentLeft + 30, cursorY, { width: contentWidth - 60, align: 'center' });
   cursorY += 48;
 
   const nameLineWidth = Math.min(contentWidth - 120, 460);
-  doc
-    .lineWidth(1.5)
-    .strokeColor(gold)
+  doc.lineWidth(1.5).strokeColor(gold)
     .moveTo(centerX - nameLineWidth / 2, cursorY)
     .lineTo(centerX + nameLineWidth / 2, cursorY)
     .stroke();
   cursorY += 20;
 
   // ─── Body text ───
-  doc
-    .font('Helvetica')
-    .fontSize(11)
-    .fillColor('#212529')
+  doc.font('Helvetica').fontSize(11).fillColor('#212529')
     .text(
       'is a registered member of the Institute of Assets & Value Management Nigeria, holding the grade of',
-      contentLeft + 80,
-      cursorY,
+      contentLeft + 80, cursorY,
       { width: contentWidth - 160, align: 'center', lineGap: 3 }
     );
   cursorY += 28;
@@ -255,14 +266,11 @@ const streamCertificate = async (res, member, settings) => {
   const tierY = cursorY;
   const tierH = 28;
   doc.roundedRect(tierX, tierY, tierWidth, tierH, 14).fill(primaryGreen);
-  doc
-    .fillColor('#FFFFFF')
-    .font('Helvetica-Bold')
-    .fontSize(15)
+  doc.fillColor('#FFFFFF').font('Helvetica-Bold').fontSize(15)
     .text(tierText, tierX, tierY + 7, { width: tierWidth, align: 'center' });
   cursorY += tierH + 18;
 
-  // ─── Meta line (member number, issue, expiry) ───
+  // ─── Meta line ───
   const metaParts = [
     `Member No: ${member.member_number}`,
     `Issued: ${fmtDate(member.joined_at)}`,
@@ -270,10 +278,7 @@ const streamCertificate = async (res, member, settings) => {
   if (member.expires_at) {
     metaParts.push(`Valid until: ${fmtDate(member.expires_at)}`);
   }
-  doc
-    .font('Helvetica')
-    .fontSize(9.5)
-    .fillColor('#495057')
+  doc.font('Helvetica').fontSize(9.5).fillColor('#495057')
     .text(metaParts.join('     •     '), contentLeft + 40, cursorY, {
       width: contentWidth - 80,
       align: 'center',
@@ -285,128 +290,97 @@ const streamCertificate = async (res, member, settings) => {
   const sigWidth = 190;
   const sigHeight = 32;
 
-  // Left side: Registrar signature
+  // Registrar (left)
   const leftSigX = contentLeft + 20;
-  const leftSigCenterX = leftSigX + sigWidth / 2;
-
   if (registrarSigPath) {
     try {
       doc.image(registrarSigPath, leftSigX, footerY - sigHeight - 2, {
-        fit: [sigWidth, sigHeight],
-        align: 'center',
-        valign: 'bottom',
+        fit: [sigWidth, sigHeight], align: 'center', valign: 'bottom',
       });
-    } catch (e) {
-      // Skip if signature image not readable
-    }
+    } catch (e) { /* skip */ }
   } else {
-    doc
-      .lineWidth(0.8)
-      .strokeColor(primaryGreen)
-      .moveTo(leftSigX, footerY)
-      .lineTo(leftSigX + sigWidth, footerY)
-      .stroke();
+    doc.lineWidth(0.8).strokeColor(primaryGreen)
+      .moveTo(leftSigX, footerY).lineTo(leftSigX + sigWidth, footerY).stroke();
   }
 
-  // Registrar name
   if (registrarName) {
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(9)
-      .fillColor(darkGreen)
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(darkGreen)
       .text(registrarName, leftSigX - 10, footerY + 6, {
-        width: sigWidth + 20,
-        align: 'center',
-        lineBreak: false,
-        ellipsis: true,
+        width: sigWidth + 20, align: 'center', lineBreak: false, ellipsis: true,
       });
   }
-  doc
-    .font('Helvetica')
-    .fontSize(8)
-    .fillColor('#6C757D')
+  doc.font('Helvetica').fontSize(8).fillColor('#6C757D')
     .text(registrarTitle.toUpperCase(), leftSigX - 10, footerY + (registrarName ? 20 : 6), {
-      width: sigWidth + 20,
-      align: 'center',
-      characterSpacing: 0.5,
-      lineBreak: false,
-      ellipsis: true,
+      width: sigWidth + 20, align: 'center', characterSpacing: 0.5, lineBreak: false, ellipsis: true,
     });
 
-  // Right side: President signature
+  // President (right)
   const rightSigX = contentRight - sigWidth - 20;
-  const rightSigCenterX = rightSigX + sigWidth / 2;
-
   if (presidentSigPath) {
     try {
       doc.image(presidentSigPath, rightSigX, footerY - sigHeight - 2, {
-        fit: [sigWidth, sigHeight],
-        align: 'center',
-        valign: 'bottom',
+        fit: [sigWidth, sigHeight], align: 'center', valign: 'bottom',
       });
-    } catch (e) {
-      // Skip
-    }
+    } catch (e) { /* skip */ }
   } else {
-    doc
-      .lineWidth(0.8)
-      .strokeColor(primaryGreen)
-      .moveTo(rightSigX, footerY)
-      .lineTo(rightSigX + sigWidth, footerY)
-      .stroke();
+    doc.lineWidth(0.8).strokeColor(primaryGreen)
+      .moveTo(rightSigX, footerY).lineTo(rightSigX + sigWidth, footerY).stroke();
   }
 
-  // President name
   if (presidentName) {
-    doc
-      .font('Helvetica-Bold')
-      .fontSize(9)
-      .fillColor(darkGreen)
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(darkGreen)
       .text(presidentName, rightSigX - 10, footerY + 6, {
-        width: sigWidth + 20,
-        align: 'center',
-        lineBreak: false,
-        ellipsis: true,
+        width: sigWidth + 20, align: 'center', lineBreak: false, ellipsis: true,
       });
   }
-  doc
-    .font('Helvetica')
-    .fontSize(8)
-    .fillColor('#6C757D')
+  doc.font('Helvetica').fontSize(8).fillColor('#6C757D')
     .text(presidentTitle.toUpperCase(), rightSigX - 10, footerY + (presidentName ? 20 : 6), {
-      width: sigWidth + 20,
-      align: 'center',
-      characterSpacing: 0.5,
-      lineBreak: false,
-      ellipsis: true,
+      width: sigWidth + 20, align: 'center', characterSpacing: 0.5, lineBreak: false, ellipsis: true,
     });
 
-  // Center: QR code
+  // QR (center)
   const qrSize = 66;
   const qrX = centerX - qrSize / 2;
   const qrY = footerY - qrSize + 4;
 
   doc.image(qrPng, qrX, qrY, { fit: [qrSize, qrSize] });
 
-  doc
-    .font('Helvetica-Bold')
-    .fontSize(7)
-    .fillColor('#6C757D')
+  doc.font('Helvetica-Bold').fontSize(7).fillColor('#6C757D')
     .text('SCAN TO VERIFY', qrX - 20, qrY + qrSize + 4, {
-      width: qrSize + 40,
-      align: 'center',
-      characterSpacing: 0.6,
+      width: qrSize + 40, align: 'center', characterSpacing: 0.6,
     });
 
-  // ─── Verification URL at very bottom center ───
-  doc
-    .font('Helvetica')
-    .fontSize(7)
-    .fillColor('#6C757D')
+  // ─── Verification URL ───
+  doc.font('Helvetica').fontSize(7).fillColor('#6C757D')
     .text(`Verification: ${verificationUrl}`, contentLeft + 40, H - innerPad - 20, {
       width: contentWidth - 80,
       align: 'center',
     });
+
+  // ─── Watermark (only for admin previews) ───
+  if (showWatermark) {
+    // Diagonal "PREVIEW" text overlay
+    doc.save();
+    doc.rotate(-30, { origin: [centerX, H / 2] });
+    doc.font('Helvetica-Bold').fontSize(120).fillColor('#DC3545')
+      .opacity(0.10)
+      .text('PREVIEW', 0, H / 2 - 60, {
+        width: W,
+        align: 'center',
+      });
+    doc.restore();
+
+    // Small red banner at the top
+    doc.save();
+    doc.rect(outerPad + 6, outerPad + 6, W - (outerPad + 6) * 2, 26).fill('#DC3545');
+    doc.font('Helvetica-Bold').fontSize(11).fillColor('#FFFFFF')
+      .text('PREVIEW ONLY — NOT VALID FOR OFFICIAL USE', contentLeft, outerPad + 14, {
+        width: contentWidth,
+        align: 'center',
+        characterSpacing: 1.5,
+      });
+    doc.restore();
+  }
 
   doc.end();
 };
